@@ -172,11 +172,11 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
           # This calculate the adjRatio
             symbol_splits_ratios <- symbol_splits %>% 
                 dplyr::mutate(adjRatio = rev(cumprod(rev(.data$value)))) %>% 
-                dplyr::rename(day = .data$date)
+                dplyr::rename(day = "date")
       
             # This mutate the date to date format
             timeserie_tiingo_date <- results %>% 
-              dplyr::mutate(day = as.Date(.data$date))
+              dplyr::mutate(day = as.Date("date"))
 
             # This join the timeserie with the splits ratios
             results <- timeserie_tiingo_date %>% 
@@ -208,8 +208,8 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
     } else {
     #format the data to export
       results <- results %>% 
-      dplyr::rename(open_time = .data$date) %>% 
-      dplyr::relocate(symbol, .after = .data$volume)
+      dplyr::rename(open_time = "date") %>% 
+      dplyr::relocate(symbol, .after = "volume")
     
     return(list(errors = if (exists("loading_errors")) loading_errors else NULL
                 , data = results))
