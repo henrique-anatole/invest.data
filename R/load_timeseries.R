@@ -64,7 +64,7 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
   if(tiingo == TRUE) {
     
     #TIINGO pricelists
-    api <- tidyquant::tiingo_api()
+    api <- tiingo_api()
     tidyquant::tiingo_api_key(api)
 
     source <- "tiingo.iex"
@@ -212,4 +212,38 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
   }
   
   
+}
+
+#' Set the tiingo API Key
+#' 
+#' @name tiingo_api
+#' 
+#' @param tiingo_key A character string with your Tiingo API Key.
+#' 
+#' @return Invisibly returns API key once set. Use print method to view.
+#' 
+#' @details
+#' The Tiingo
+#' API key must be set [tiingo_api()] prior to load stock timeseries that needs it.
+#' You can obtain an API key at your Tiingo account (https://api.tiingo.com/).
+#' 
+#' @examples
+#' \dontrun{
+#' tiingo_api("YOUR_API_KEY")
+#' stock_test = load_stock_timeseries(symbol = "AAPL", start_date="2021-01-01", end_date="2021-07-01")
+#' }
+#' 
+#' @export
+tiingo_api <- function(tiingo_key) {
+    
+    # Set the tiingo API Key, if it was informed
+    if (!missing(tiingo_key)) {
+
+        options(tiingo_key = tiingo_key)
+
+    }
+
+    # Return the API key
+    invisible(getOption('tiingo_key'))
+
 }
