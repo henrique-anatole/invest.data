@@ -1,4 +1,7 @@
-#' load the timeseries from yahoo finance (daily) or tiingo (intraday)
+#' load_stock_timeseries
+#' 
+#' Load the timeseries from yahoo finance (daily) or tiingo (intraday).
+#' Testing how long a description needs to be to see if it is wrapped in the documentation.
 #' 
 #' @param symbol Stock symbol or vector of symbols
 #' @param interval Time interval between two data points in the time series.
@@ -15,21 +18,20 @@
 #' @import stringr
 #' @import zoo
 #' @import DBI
-#' @examples 
-#' # Load hourly time series for AAPL from 2021-10-01 to 2022-02-01
-#' stock_test_hour = load_stock_timeseries(symbol = "AAPL", interval="1h", start_date="2021-10-01", end_date="2022-02-01")
 #' 
+#' @export
+#' 
+#' @examples 
 #' # Load daily time series for AAPL from 2021-10-01 to 2022-02-01
-#' stock_test_day = load_stock_timeseries(symbol = "AAPL", interval="1d", start_date="2021-10-01", end_date="2022-02-01")
+#' stock_test_day = load_stock_timeseries(symbol = "AAPL", 
+#' interval="1d", 
+#' start_date="2021-10-01", 
+#' end_date="2022-02-01")
 #' 
 #' # Load daily time series for AAPL and MSFT from 2021-10-01 to 2022-02-01
-#' stock_test_multi = load_stock_timeseries(symbol = c("AAPL", "MSFT"), interval="1d", start_date="2021-10-01", end_date="2022-02-01")
-#' 
-#' # Load weekly time series for AAPL from 2021-10-01 to 2022-02-01
-#' stock_test_week = load_stock_timeseries(symbol = "AAPL", interval="1w", start_date="2021-10-01", end_date="2022-02-01")
-#' 
-#' # Load monthly time series for AAPL from 2021-10-01 to 2022-02-01
-#' stock_test_month = load_stock_timeseries(symbol = "AAPL", interval="1M", start_date="2021-10-01", end_date="2022-02-01")
+#' stock_test_multi = load_stock_timeseries(symbol = c("AAPL", "MSFT"), 
+#' interval="1d", start_date="2021-10-01", 
+#' end_date="2022-02-01")
 #' 
 load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, end_date, adjust_splits = TRUE) {
   
@@ -130,7 +132,7 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
     }, error = function(e) {
       
       message(paste0("Error for ", symbol, ": "), e)
-      temp <<- NULL
+      temp <- NULL
 
     })
     
@@ -140,11 +142,11 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
       
       if (exists("loading_errors")) {
         
-        loading_errors <<- dplyr::bind_rows(loading_errors, sequency[i,])
+        loading_errors <- dplyr::bind_rows(loading_errors, sequency[i,])
         
       } else {
         
-        loading_errors <<- sequency[i,]
+        loading_errors <- sequency[i,]
         
       }
 
@@ -167,30 +169,31 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
         } else {
   
           # Implementing adjustments for splits
-          # This chain merges the price data into the div.data in order to get the prices to calculate the adjRatio
+          # This calculate the adjRatio
             symbol_splits_ratios <- symbol_splits %>% 
-                dplyr::mutate(adjRatio = rev(cumprod(rev(value)))) %>% 
-                dplyr::rename(day = date)
+                dplyr::mutate(adjRatio = rev(cumprod(rev(.data$value)))) %>% 
+                dplyr::rename(day = .data$date)
       
-            # This chain merges the div.data back into the price series, propagates the adjRatio and calculates the Adjusted Close:
+            # This mutate the date to date format
             timeserie_tiingo_date <- results %>% 
-              dplyr::mutate(day = as.Date(date))
-      
+              dplyr::mutate(day = as.Date(.data$date))
+
+            # This join the timeserie with the splits ratios
             results <- timeserie_tiingo_date %>% 
               dplyr::left_join(symbol_splits_ratios) %>% 
               # move adjRatio value 1 row back
-              dplyr::mutate(adjRatio = dplyr::lead(adjRatio, n=1)) %>% 
+              dplyr::mutate(adjRatio = dplyr::lead(.data$adjRatio, n=1)) %>% 
               # replacing each NA with the most recent non-NA prior to it
-              dplyr::mutate(adjRatio = zoo::na.locf(adjRatio, fromLast = TRUE, na.rm = FALSE)) %>% 
+              dplyr::mutate(adjRatio = zoo::na.locf(.data$adjRatio, fromLast = TRUE, na.rm = FALSE)) %>% 
               # Fast fill missing values with 1 (after the last dividend payd)
-              dplyr::mutate(adjRatio = na.fill(adjRatio, fill = 1.0)) %>% 
-              dplyr::mutate(open = open * adjRatio
-                    , high = high * adjRatio
-                    , low = low * adjRatio
-                    , close = close * adjRatio) %>% 
-              dplyr::select(-day, -value, -adjRatio)
+              dplyr::mutate(adjRatio = na.fill(.data$adjRatio, fill = 1.0)) %>% 
+              dplyr::mutate(open = .data$open * .data$adjRatio
+                    , high = .data$high * .data$adjRatio
+                    , low = .data$low * .data$adjRatio
+                    , close = .data$close * .data$adjRatio) %>% 
+              dplyr::select(-c("day", "value", "adjRatio"))
         
-          } # end of if is.null(symbol_splits)
+        } # end of if is.null(symbol_splits)
         
       } # end of if adjust_splits
       
@@ -205,12 +208,13 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
     } else {
     #format the data to export
       results <- results %>% 
-      dplyr::rename(open_time = date) %>% 
-      dplyr::relocate(symbol, .after = volume)
+      dplyr::rename(open_time = .data$date) %>% 
+      dplyr::relocate(symbol, .after = .data$volume)
     
-    return(results)
+    return(list(errors = if (exists("loading_errors")) loading_errors else NULL
+                , data = results))
+      
   }
-  
   
 }
 

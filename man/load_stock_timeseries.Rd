@@ -2,7 +2,7 @@
 % Please edit documentation in R/load_timeseries.R
 \name{load_stock_timeseries}
 \alias{load_stock_timeseries}
-\title{load the timeseries from yahoo finance (daily) or tiingo (intraday)}
+\title{load_stock_timeseries}
 \usage{
 load_stock_timeseries(
   symbol,
@@ -31,22 +31,19 @@ One of '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d'
 A tibble with the time series data
 }
 \description{
-load the timeseries from yahoo finance (daily) or tiingo (intraday)
+Load the timeseries from yahoo finance (daily) or tiingo (intraday).
+Testing how long a description needs to be to see if it is wrapped in the documentation.
 }
 \examples{
-# Load hourly time series for AAPL from 2021-10-01 to 2022-02-01
-stock_test_hour = load_stock_timeseries(symbol = "AAPL", interval="1h", start_date="2021-10-01", end_date="2022-02-01")
-
 # Load daily time series for AAPL from 2021-10-01 to 2022-02-01
-stock_test_day = load_stock_timeseries(symbol = "AAPL", interval="1d", start_date="2021-10-01", end_date="2022-02-01")
+stock_test_day = load_stock_timeseries(symbol = "AAPL", 
+interval="1d", 
+start_date="2021-10-01", 
+end_date="2022-02-01")
 
 # Load daily time series for AAPL and MSFT from 2021-10-01 to 2022-02-01
-stock_test_multi = load_stock_timeseries(symbol = c("AAPL", "MSFT"), interval="1d", start_date="2021-10-01", end_date="2022-02-01")
-
-# Load weekly time series for AAPL from 2021-10-01 to 2022-02-01
-stock_test_week = load_stock_timeseries(symbol = "AAPL", interval="1w", start_date="2021-10-01", end_date="2022-02-01")
-
-# Load monthly time series for AAPL from 2021-10-01 to 2022-02-01
-stock_test_month = load_stock_timeseries(symbol = "AAPL", interval="1M", start_date="2021-10-01", end_date="2022-02-01")
+stock_test_multi = load_stock_timeseries(symbol = c("AAPL", "MSFT"), 
+interval="1d", start_date="2021-10-01", 
+end_date="2022-02-01")
 
 }
