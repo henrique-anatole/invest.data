@@ -16,7 +16,6 @@ Imports:
     lubridate,
     stringr,
     zoo,
-    DBI,
     riingo
 Suggests: 
     testthat (>= 3.0.0)

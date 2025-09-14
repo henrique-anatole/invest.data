@@ -6,7 +6,7 @@
 #' @param symbol Stock symbol or vector of symbols
 #' @param interval Time interval between two data points in the time series.
 #' One of '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d'
-#' @param limit Number of observations to retrieve per request (max 1000)
+#' @param limit Number of observations to retrieve per request (max 1000) - the function will make multiple requests if needed
 #' @param start_date Start date of the time series (YYYY-MM-DD)
 #' @param end_date End date of the time series (YYYY-MM-DD)
 #' @param adjust_splits Logical. If TRUE, adjust the prices for stock splits (only for tiingo data)
@@ -17,10 +17,7 @@
 #' @import lubridate
 #' @import stringr
 #' @import zoo
-#' @import DBI
-#' 
 #' @export
-#' 
 #' @examples 
 #' # Load daily time series for AAPL from 2021-10-01 to 2022-02-01
 #' stock_test_day = load_stock_timeseries(symbol = "AAPL", 
@@ -218,36 +215,150 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
   
 }
 
-#' Set the tiingo API Key
+#' load_crypto_timeseries
+#' Load the timeseries from binance.
 #' 
-#' @name tiingo_api
+#' @param pair Crypto pair symbol (e.g. "ETHUSDT")
+#' @param interval Time interval between two data points in the time series.
+#' One of '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'
+#' @param limit Number of observations to retrieve per request (max 1000) - the function will make multiple requests if needed
+#' @param start_date Start date of the time series (YYYY-MM-DD)
+#' @param end_date End date of the time series (YYYY-MM-DD)
+#' @param source Data source. Currently only "binance" is supported.
 #' 
-#' @param tiingo_key A character string with your Tiingo API Key.
-#' 
-#' @return Invisibly returns API key once set. Use print method to view.
-#' 
-#' @details
-#' The Tiingo
-#' API key must be set [tiingo_api()] prior to load stock timeseries that needs it.
-#' You can obtain an API key at your Tiingo account (https://api.tiingo.com/).
-#' 
-#' @examples
-#' \dontrun{
-#' tiingo_api("YOUR_API_KEY")
-#' stock_test = load_stock_timeseries(symbol = "AAPL", start_date="2021-01-01", end_date="2021-07-01")
-#' }
+#' @return A tibble with the time series data
+#' @import dplyr
+#' @import stringr
+#' @import lubridate
 #' 
 #' @export
-tiingo_api <- function(tiingo_key) {
-    
-    # Set the tiingo API Key, if it was informed
-    if (!missing(tiingo_key)) {
+#' @examples
+#' # Load 1 minute time series for ETHUSDT from 2021-01-01 to 2021-07-01
+#' crypto_test = load_crypto_timeseries(pair = "ETHUSDT", interval="1m", start_date="2021-01-01", end_date="2021-01-02")
+#' # Load 15 minute time series for ETHUSDT from 2021-01-01 to 2021-07-01
+#' crypto_test = load_crypto_timeseries(pair = "ETHUSDT", interval="15m", start_date="2021-01-01", end_date="2021-01-02")
+#' # Load 1 hour time series for ETHUSDT from 2021-01-01 to 2021-07-01
+#' crypto_test = load_crypto_timeseries(pair = "ETHUSDT", interval="1h", start_date="2021-01-01", end_date="2021-01-02")
+#' 
+load_crypto_timeseries <- function(pair, interval, limit=1000, start_date, end_date, source="binance") {
+  
+  # check date-time formats
+    # Check if is a valid YYYY-MM-DD
+    # if is date or posixct, change to character
+  
+  # check intervals
+  seq_interval <- dplyr::case_when(
+    interval == '1m' ~ '1 min',
+    interval == '3m' ~ '3 min',
+    interval == '5m' ~ '5 min',
+    interval == '15m' ~ '15 min',
+    interval == '30m' ~ '30 min',
+    interval == '1h' ~ '1 hour',
+    interval == '2h' ~ '2 hour',
+    interval == '4h' ~ '4 hour',
+    interval == '6h' ~ '6 hour',
+    interval == '8h' ~ '8 hour',
+    interval == '12h' ~ '12 hour',
+    interval == '1d' ~ '1 day',
+    interval == '3d' ~ '3 day',
+    interval == '1w' ~ '1 week',
+    interval == '1M' ~ '1 month',
+    TRUE ~ "what?")
+  
+    if (seq_interval == "what?") {
 
-        options(tiingo_key = tiingo_key)
-
+      stop("Please, select an interval between c('1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M')")
+      
     }
+  
+  number <- as.numeric(stringr::str_extract(seq_interval, "[0-9]+"))
+  period <- stringr::str_extract(seq_interval, "[a-z]+")
+  by <- paste(limit*number, period)
+  
+  
+  #check how many ticks of 1000 x interval are needed
+  
+  seq_quantity <- length(seq(as.POSIXct(start_date, tz="UTC"),as.POSIXct(end_date, tz="UTC"),by=by))
+  seq_time <- dplyr::case_when(
+    period == "min" ~ lubridate::minutes(limit*number-1),
+    period == "hour" ~ lubridate::hours(limit*number-1),
+    period == "day" ~ lubridate::days(limit*number-1),
+    period == "week" ~ lubridate::weeks(limit*number-1),
+    period == "month" ~ months(limit*number-1),
+  )
 
-    # Return the API key
-    invisible(getOption('tiingo_key'))
+    
+  start_date_seq <- seq(as.POSIXct(start_date, tz="UTC"),as.POSIXct(end_date, tz="UTC"),by=by)
+  
+  end_date_seq <- start_date_seq+seq_time
+  end_date_seq[length(end_date_seq)] <- as.POSIXct(end_date, tz="UTC")
 
+  #Create a dataframe with the series
+    sequency <- dplyr::tibble(pair = pair, start_date=start_date_seq, end_date=end_date_seq)
+
+  #Run a looping merging the results
+    results = NULL
+    
+    for (i in 1:dim(sequency)[1]) {
+
+      temp <- binance_klines(pair
+                             , interval = interval
+                             , limit = limit
+                             , start_time = as.character(sequency$start_date[i])
+                             , end_time = as.character(sequency$end_date[i]))
+      
+      results <- bind_rows(results,temp)
+      
+    }
+  
+    return(results)
+  #format the data to export
+  
+}
+
+#' load_yahoo_dividends
+#' Load dividends from yahoo finance using tidyquant.
+#' 
+#' @param list_tikers A vector of stock symbols
+#' @param start_date Start date of the time series (YYYY-MM-DD)
+#' @param end_date End date of the time series (YYYY-MM-DD). Default is today's date.
+#' @return A tibble with the dividends data
+#' @import dplyr
+#' @import tidyquant
+#' @export
+#' @examples
+#' #' # Load dividends for AAPL and MSFT from 2020-01-01 to 2022-01-01
+#' dividends = load_yahoo_dividends(list_tikers = c("AAPL", "MSFT"), start_date = "2020-01-01", end_date = "2022-01-01")
+#' 
+# for each symbol, try to get the dividends using tidyquant. Return a list of symbols that have dividends
+load_yahoo_dividends <- function(list_tikers, start_date, end_date = as.character(Sys.Date())) {
+  
+  # Initialize an empty tibble to store the results
+  symbols <- c()
+  dividends <- tibble()
+  
+  # Loop through each symbol and try to get the dividends
+  for (i in list_tikers) {
+    
+    tryCatch({
+      
+      temp <- tidyquant::tq_get(x = i,
+                                get = "dividends",
+                                from = start_date,
+                                to = end_date
+                                )
+      
+      symbols <- c(symbols, i)
+      dividends <- rbind(dividends, temp)
+      
+    }, error = function(e) {
+      
+      print(paste0(i, " got no dividends"))
+      
+    })
+    
+  }
+  
+  return(dividends)
+  
 }
