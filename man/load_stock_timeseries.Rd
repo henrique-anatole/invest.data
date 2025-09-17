@@ -19,7 +19,7 @@ load_stock_timeseries(
 \item{interval}{Time interval between two data points in the time series.
 One of '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d'}
 
-\item{limit}{Number of observations to retrieve per request (max 1000)}
+\item{limit}{Number of observations to retrieve per request (max 1000) - the function will make multiple requests if needed}
 
 \item{start_date}{Start date of the time series (YYYY-MM-DD)}
 

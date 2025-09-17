@@ -8,7 +8,7 @@
 #' @return Invisibly returns API key and Secret once set. Use print method to view.
 #'
 #' @details
-#' The Binance API key and Secret must be set [binance_api()] prior to load crypto timeseries that needs it.
+#' The Binance API key and Secret must be set prior to load crypto timeseries that needs it.
 #'  You can obtain an API key at your binance account (https://www.binance.com/en/support/faq/how-to-create-an-api-key-for-a-lead-trading-portfolio-2bec848b904b422197ce121d0925f20b).
 #'
 #' @examples
@@ -49,7 +49,7 @@ binance_api <- function(bin_key, bin_secret) {
 #' 
 #' @details
 #' The Tiingo
-#' API key must be set [tiingo_api()] prior to load stock timeseries that needs it.
+#' API key must be set prior to load stock timeseries that needs it.
 #' You can obtain an API key at your Tiingo account (https://api.tiingo.com/).
 #' 
 #' @examples

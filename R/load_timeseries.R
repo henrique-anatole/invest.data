@@ -32,6 +32,17 @@
 #' 
 load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, end_date, adjust_splits = TRUE) {
   
+  # check date-time formats
+  if (is_valid_date(start_date) == FALSE) {
+    stop("start_date is not a valid date. Please use YYYY-MM-DD format.")
+  }
+  if (is_valid_date(end_date) == FALSE) {
+    stop("end_date is not a valid date. Please use YYYY-MM-DD format.")
+  }
+  if (as.Date(start_date) > as.Date(end_date)) {
+    stop("start_date must be earlier than end_date.")
+  }
+
   #check intervals
   seq_interval <- dplyr::case_when(
     interval == '1m' ~ '1 min',
@@ -162,7 +173,9 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
                     to = Sys.Date()
                     )
         if (is.null(symbol_splits)) {
+          
           message("No splits found for ", symbol)
+
         } else {
   
           # Implementing adjustments for splits
@@ -173,7 +186,7 @@ load_stock_timeseries <- function(symbol, interval, limit=60*24*7, start_date, e
       
             # This mutate the date to date format
             timeserie_tiingo_date <- results %>% 
-              dplyr::mutate(day = as.Date("date"))
+              dplyr::mutate(day = as.Date(date))
 
             # This join the timeserie with the splits ratios
             results <- timeserie_tiingo_date %>% 
@@ -245,6 +258,25 @@ load_crypto_timeseries <- function(pair, interval, limit=1000, start_date, end_d
   # check date-time formats
     # Check if is a valid YYYY-MM-DD
     # if is date or posixct, change to character
+  if (!lubridate::is.Date(start_date) && !lubridate::is.POSIXct(start_date)) {
+    if (is.na(lubridate::as_date(start_date))) {
+      stop("start_date is not a valid date. Please use YYYY-MM-DD format.")
+    } else {
+      start_date <- as.character(lubridate::as_date(start_date))
+    }
+  } else {
+    start_date <- as.character(lubridate::as_date(start_date))
+  }
+
+  if (!lubridate::is.Date(end_date) && !lubridate::is.POSIXct(end_date)) {
+    if (is.na(lubridate::as_date(end_date))) {
+      stop("end_date is not a valid date. Please use YYYY-MM-DD format.")
+    } else {
+      end_date <- as.character(lubridate::as_date(end_date))
+    }
+  } else {
+    end_date <- as.character(lubridate::as_date(end_date))
+  }
   
   # check intervals
   seq_interval <- dplyr::case_when(
