@@ -244,4 +244,76 @@ test_that("crypto: Timeseries is ordered by open_time", {
   expect_true(all(diff(res$data$open_time) >= 0))
 })
 
+## Dividends tests
+# Unit tests for load_yahoo_dividends function
 
+test_that("dividends: start_date after end_date throws error", {
+  expect_error(
+    load_yahoo_dividends(symbols = "AAPL",
+                         start_date = "2021-02-01",
+                         end_date   = "2021-01-01"),
+    regexp = "start_date must be"
+  )
+})
+
+test_that("dividends: invalid dates throws error", {
+  expect_error(
+    load_yahoo_dividends(symbols = "AAPL",
+                         start_date = "2021-13-01",
+                         end_date   = "2021-01-10"),
+    regexp = "start_date must be"
+  )
+  expect_error(
+    load_yahoo_dividends(symbols = "AAPL",
+                         start_date = "2021-01-01",
+                         end_date   = "2021-13-10"),
+    regexp = "end_date must be"
+  )
+})
+
+test_that("dividends: single symbol returns data", {
+  res <- load_yahoo_dividends(symbols = "AAPL",
+                              start_date = "2020-01-01",
+                              end_date   = "2022-01-01")
+  expect_type(res, "list")
+  expect_true("data" %in% names(res))
+  expect_s3_class(res$data, "tbl_df")
+  expect_true(nrow(res$data) > 0)
+  expect_true("symbol" %in% names(res$data))
+})
+
+test_that("dividends: multiple symbols returns combined data", {
+  res <- load_yahoo_dividends(symbols = c("AAPL", "MSFT"),
+                              start_date = "2020-01-01",
+                              end_date   = "2022-01-01")
+  expect_s3_class(res$data, "tbl_df")
+  expect_true(all(c("AAPL", "MSFT") %in% unique(res$data$symbol)))
+})
+
+test_that("dividends: non-existent symbol captured in errors", {
+  res <- suppressWarnings(
+    load_yahoo_dividends(symbols = c("AAPL", "NONEXISTENT"),
+                         start_date = "2020-01-01",
+                         end_date   = "2022-01-01")
+  )
+  expect_true(!is.null(res$errors))
+  expect_true("NONEXISTENT" %in% res$errors$symbol)
+})
+
+test_that("dividends: data preserves input symbol order", {
+  symbols <- c("MSFT", "AAPL")
+  res <- load_yahoo_dividends(symbols = symbols,
+                              start_date = "2020-01-01",
+                              end_date   = "2022-01-01")
+  expect_equal(levels(res$data$symbol), symbols)
+})
+
+test_that("dividends: empty result returns NULL data and non-empty errors", {
+  res <- suppressWarnings(
+    load_yahoo_dividends(symbols = "NONEXISTENT",
+                         start_date = "2020-01-01",
+                         end_date   = "2022-01-01")
+  )
+  expect_null(res$data)
+  expect_true(nrow(res$errors) > 0)
+})

@@ -102,57 +102,6 @@ load_crypto_timeseries <- function(pair,
   return(results)
 }
 
-
-#' load_yahoo_dividends
-#' Load dividends from yahoo finance using tidyquant.
-#' 
-#' @param list_tikers A vector of stock symbols
-#' @param start_date Start date of the time series (YYYY-MM-DD)
-#' @param end_date End date of the time series (YYYY-MM-DD). Default is today's date.
-#' @return A tibble with the dividends data
-#' @import dplyr
-#' @import tidyquant
-#' @export
-#' @examples
-#' #' # Load dividends for AAPL and MSFT from 2020-01-01 to 2022-01-01
-#' dividends = load_yahoo_dividends(list_tikers = c("AAPL", "MSFT"), start_date = "2020-01-01", end_date = "2022-01-01")
-#' 
-# for each symbol, try to get the dividends using tidyquant. Return a list of symbols that have dividends
-load_yahoo_dividends <- function(list_tikers, start_date, end_date = as.character(Sys.Date())) {
-  
-  # Initialize an empty tibble to store the results
-  symbols <- c()
-  dividends <- tibble()
-  
-  # Loop through each symbol and try to get the dividends
-  for (i in list_tikers) {
-    
-    tryCatch({
-      
-      temp <- tidyquant::tq_get(x = i,
-                                get = "dividends",
-                                from = start_date,
-                                to = end_date
-                                )
-      
-      symbols <- c(symbols, i)
-      dividends <- rbind(dividends, temp)
-      
-    }, error = function(e) {
-      
-      print(paste0(i, " got no dividends"))
-      
-    })
-    
-  }
-  
-  return(dividends)
-  
-}
-
-
-
-
 #' load_stock_timeseries
 #'
 #' Load stock timeseries from Yahoo Finance (daily) or Tiingo (intraday).
@@ -304,6 +253,82 @@ load_stock_timeseries <- function(symbol,
 
   return(results)
 }
+
+#' load_yahoo_dividends
+#'
+#' Load dividends from Yahoo Finance using tidyquant.
+#'
+#' @param symbols Character vector. Stock ticker(s) to retrieve dividends for.
+#' @param start_date Character. Start date in "YYYY-MM-DD".
+#' @param end_date Character. End date in "YYYY-MM-DD". Default is today's date.
+#'
+#' @return A list with:
+#'   \describe{
+#'     \item{data}{Tibble with dividends data.}
+#'     \item{errors}{Tibble with symbols that could not be retrieved, including error message.}
+#'   }
+#' @import dplyr tidyquant purrr tibble
+#' @export
+#'
+#' @examples
+#' dividends <- load_yahoo_dividends(
+#'   symbols = c("AAPL", "MSFT"),
+#'   start_date = "2020-01-01",
+#'   end_date   = "2022-01-01"
+#' )
+load_yahoo_dividends <- function(symbols, start_date, end_date = as.character(Sys.Date())) {
+
+  # Validate inputs
+  if (!is.character(symbols)) stop("symbols must be a character vector")
+  if (!is_valid_date(start_date)) stop("start_date must be YYYY-MM-DD")
+  if (!is_valid_date(end_date)) stop("end_date must be YYYY-MM-DD")
+  if (as.Date(start_date) > as.Date(end_date)) stop("start_date must be before end_date")
+
+  # Run queries for each symbol
+  results <- purrr::map(symbols, function(s) {
+    tryCatch(
+      {
+        temp <- tidyquant::tq_get(
+          x = s,
+          get = "dividends",
+          from = start_date,
+          to = end_date
+        )
+
+        if (any(is.null(temp), is.na(temp), nrow(temp) == 0)) {
+          warning("No data for ", s, " in ", start_date, " - ", end_date)
+          return(list(data = NULL, error = tibble(symbol = s, error_message = "No data returned")))
+        }
+
+        list(data = temp, error = NULL)
+      },
+      error = function(e) {
+        list(data = NULL,
+             error = tibble(symbol = s, error_message = e$message))
+      }
+    )
+  })
+
+  # Combine results
+  all_data <- purrr::map_dfr(results, "data")
+  all_errors <- purrr::map_dfr(results, "error")
+
+  # Preserve input symbol order in data
+  if (!is.null(all_data) && nrow(all_data) > 0) {
+    all_data <- all_data %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(symbol = factor(symbol, levels = symbols)) %>%
+      dplyr::arrange(symbol, date)
+  }
+
+  # Return standardized list
+  list(
+    data = if (nrow(all_data) > 0) all_data else NULL,
+    errors = if (nrow(all_errors) > 0) all_errors else NULL
+  )
+}
+
+
 
 #---- Helper Functions ----
 #' Validate inputs
