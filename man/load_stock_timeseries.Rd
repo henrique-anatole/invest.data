@@ -7,7 +7,7 @@
 load_stock_timeseries(
   symbol,
   interval,
-  chunk_size = 1000,
+  chunk_size = NA,
   start_date,
   end_date,
   adjust_splits = TRUE

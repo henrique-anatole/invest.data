@@ -2,45 +2,47 @@
 % Please edit documentation in R/load_timeseries.R
 \name{load_crypto_timeseries}
 \alias{load_crypto_timeseries}
-\title{load_crypto_timeseries
-Load the timeseries from binance.}
+\title{load_crypto_timeseries}
 \usage{
 load_crypto_timeseries(
   pair,
   interval,
-  limit = 1000,
+  chunk_size = 1000,
   start_date,
   end_date,
   source = "binance"
 )
 }
 \arguments{
-\item{pair}{Crypto pair symbol (e.g. "ETHUSDT")}
+\item{pair}{Character vector. Crypto pair(s), e.g. "ETHUSDT".}
 
-\item{interval}{Time interval between two data points in the time series.
-One of '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'}
+\item{interval}{Character. One of '1m','3m','5m','15m','30m','1h',
+'2h','4h','6h','8h','12h','1d','3d','1w','1M'.}
 
-\item{limit}{Number of observations to retrieve per request (max 1000) - the function will make multiple requests if needed}
+\item{chunk_size}{Integer. Number of observations per query (max 1000).}
 
-\item{start_date}{Start date of the time series (YYYY-MM-DD)}
+\item{start_date}{Character in "YYYY-MM-DD".}
 
-\item{end_date}{End date of the time series (YYYY-MM-DD)}
+\item{end_date}{Character in "YYYY-MM-DD".}
 
-\item{source}{Data source. Currently only "binance" is supported.}
+\item{source}{Character. Currently only "binance" supported.}
 }
 \value{
-A tibble with the time series data
+A list with:
+\describe{
+\item{data}{Tibble with OHLCV timeseries.}
+\item{errors}{Tibble with failed query ranges or NULL.}
+}
 }
 \description{
-load_crypto_timeseries
-Load the timeseries from binance.
+Load crypto timeseries from Binance.
 }
 \examples{
-# Load 1 minute time series for ETHUSDT from 2021-01-01 to 2021-07-01
-crypto_test = load_crypto_timeseries(pair = "ETHUSDT", interval="1m", start_date="2021-01-01", end_date="2021-01-02")
-# Load 15 minute time series for ETHUSDT from 2021-01-01 to 2021-07-01
-crypto_test = load_crypto_timeseries(pair = "ETHUSDT", interval="15m", start_date="2021-01-01", end_date="2021-01-02")
-# Load 1 hour time series for ETHUSDT from 2021-01-01 to 2021-07-01
-crypto_test = load_crypto_timeseries(pair = "ETHUSDT", interval="1h", start_date="2021-01-01", end_date="2021-01-02")
-
+# Load 1 minute time series for ETHUSDT
+crypto_test <- load_crypto_timeseries(
+  pair = "ETHUSDT",
+  interval = "1m",
+  start_date = "2021-01-01",
+  end_date   = "2021-01-02"
+)
 }
