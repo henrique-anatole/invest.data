@@ -2,23 +2,34 @@
 % Please edit documentation in R/is_valid_date.R
 \name{is_valid_date}
 \alias{is_valid_date}
-\title{is_valid_date
-Check if a date string is in a valid format (YYYY-MM-DD) and represents a real date.}
+\title{Validate Date Strings}
 \usage{
-is_valid_date(x)
+is_valid_date(date_str)
 }
 \arguments{
-\item{date_str}{A string representing a date.}
+\item{date_str}{Character vector. One or more strings representing dates.}
 }
 \value{
-TRUE if the date string is valid, FALSE otherwise.
+Logical vector. Each element is \code{TRUE} if the corresponding input string is a valid date in \code{"YYYY-MM-DD"} format, \code{FALSE} otherwise. \code{NA} values in the input return \code{FALSE}.
 }
 \description{
-is_valid_date
-Check if a date string is in a valid format (YYYY-MM-DD) and represents a real date.
+Checks whether one or more strings are in the format \code{"YYYY-MM-DD"} and represent real calendar dates.
+}
+\details{
+The function performs two checks for each element in \code{date_str}:
+\enumerate{
+\item The string matches the pattern \code{YYYY-MM-DD}.
+\item The string can be successfully parsed into a valid date using \code{lubridate::ymd()}.
+}
+
+Invalid dates (e.g., \code{"2023-02-30"}) or incorrectly formatted strings (e.g., \code{"15-10-2023"}) return \code{FALSE}.
+This function is vectorized, so it can process multiple date strings at once.
 }
 \examples{
-is_valid_date("2023-10-15")  # TRUE
-is_valid_date("2023-02-30")  # FALSE (invalid date)
-is_valid_date("15-10-2023")  # FALSE (wrong format)
+is_valid_date("2023-10-15")                 # TRUE
+is_valid_date("2023-02-30")                 # FALSE (invalid date)
+is_valid_date("15-10-2023")                 # FALSE (wrong format)
+is_valid_date(c("2023-01-01", "2023-02-30")) # c(TRUE, FALSE)
+is_valid_date(NA)                            # FALSE
+
 }

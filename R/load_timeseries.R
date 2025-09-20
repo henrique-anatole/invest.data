@@ -276,7 +276,7 @@ load_stock_timeseries <- function(symbol,
     results$data <- all_data %>%
       dplyr::mutate(symbol = symbol) %>%   # ensure column exists
       dplyr::rename(open_time = "date") %>%
-      dplyr::relocate(symbol, .after = volume)
+      dplyr::relocate(symbol, .after = "volume")
     results$errors <- if (nrow(all_errors) > 0) all_errors else NULL
   }
 
