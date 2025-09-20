@@ -7,43 +7,51 @@
 load_stock_timeseries(
   symbol,
   interval,
-  limit = 60 * 24 * 7,
+  chunk_size = 1000,
   start_date,
   end_date,
   adjust_splits = TRUE
 )
 }
 \arguments{
-\item{symbol}{Stock symbol or vector of symbols}
+\item{symbol}{Character vector. Stock ticker(s).}
 
-\item{interval}{Time interval between two data points in the time series.
-One of '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d'}
+\item{interval}{Character. One of '1m','3m','5m','15m','30m',
+'1h','2h','4h','6h','8h','12h','1d'.}
 
-\item{limit}{Number of observations to retrieve per request (max 1000) - the function will make multiple requests if needed}
+\item{chunk_size}{Integer. Number of observations per query (max 1000).}
 
-\item{start_date}{Start date of the time series (YYYY-MM-DD)}
+\item{start_date}{Character in "YYYY-MM-DD".}
 
-\item{end_date}{End date of the time series (YYYY-MM-DD)}
+\item{end_date}{Character in "YYYY-MM-DD".}
 
-\item{adjust_splits}{Logical. If TRUE, adjust the prices for stock splits (only for tiingo data)}
+\item{adjust_splits}{Logical. Adjust prices for splits (Tiingo only).}
 }
 \value{
-A tibble with the time series data
+A list with:
+\describe{
+\item{data}{Tibble with OHLCV timeseries.}
+\item{errors}{Tibble with failed query ranges or NULL.}
+}
 }
 \description{
-Load the timeseries from yahoo finance (daily) or tiingo (intraday).
-Testing how long a description needs to be to see if it is wrapped in the documentation.
+Load stock timeseries from Yahoo Finance (daily) or Tiingo (intraday).
 }
 \examples{
 # Load daily time series for AAPL from 2021-10-01 to 2022-02-01
-stock_test_day = load_stock_timeseries(symbol = "AAPL", 
-interval="1d", 
-start_date="2021-10-01", 
+stock_test_day = load_stock_timeseries(symbol = "AAPL",
+interval="1d",
+start_date="2021-10-01",
 end_date="2022-02-01")
-
 # Load daily time series for AAPL and MSFT from 2021-10-01 to 2022-02-01
-stock_test_multi = load_stock_timeseries(symbol = c("AAPL", "MSFT"), 
-interval="1d", start_date="2021-10-01", 
+stock_test_multi = load_stock_timeseries(symbol = c("AAPL", "MSFT"),
+interval="1d",
+start_date="2021-10-01",
+end_date="2022-02-01")
+# # Load hourly time series for AAPL from 2021-10-01 to 2022-02-01
+stock_test_hour = load_stock_timeseries(symbol = "AAPL",
+interval="1h",
+start_date="2021-10-01",
 end_date="2022-02-01")
 
 }
