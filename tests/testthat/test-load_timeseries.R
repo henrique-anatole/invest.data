@@ -133,6 +133,52 @@ test_that("stock: Data has expected column names", {
                c("open_time","open","high","low","close","volume","symbol","adjusted"))
 })
 
+test_that("stock: Test chunk sizes", {
+
+  expect_error(load_stock_timeseries("AAPL", 
+                                "1d",
+                                chunk_size = 3000,
+                                start_date="2021-01-01",
+                                end_date="2023-01-03"),
+                regexp = "chunk_size cannot exceed")
+  
+  expect_error(load_stock_timeseries("AAPL", 
+                                "1d",
+                                chunk_size = -5,
+                                start_date="2021-01-01",
+                                end_date="2023-01-03"),
+               regexp = "chunk_size must be a positive integer at least 10")
+  
+  expect_error(load_stock_timeseries("AAPL", 
+                                "1d",
+                                chunk_size = 5,
+                                start_date="2021-01-01",
+                                end_date="2023-01-03"),
+               regexp = "chunk_size must be a positive integer at least 10")
+
+    expect_error(load_stock_timeseries(symbol = "AAPL", 
+                                interval = "1d",
+                                chunk_size = "5000",
+                                start_date="2021-01-01",
+                                end_date="2023-01-03"),
+               regexp = "chunk_size must be a positive integer at least 10")
+  
+    expect_error(load_stock_timeseries("AAPL", 
+                                "1d",
+                                chunk_size = NA,
+                                start_date="2021-01-01",
+                                end_date="2023-01-03"),
+               regexp = "chunk_size must be a positive integer at least 10")
+  
+    expect_error(load_stock_timeseries("AAPL", 
+                                "1d",
+                                chunk_size = 50.7,
+                                start_date="2021-01-01",
+                                end_date="2023-01-03"),
+               regexp = "chunk_size must be a positive integer at least 10")
+  
+})
+
 #### Cryptocurrency tests ####
 # Unit tests for load_crypto_timeseries function
 
@@ -244,6 +290,17 @@ test_that("crypto: Timeseries is ordered by open_time", {
   expect_true(all(diff(res$data$open_time) >= 0))
 })
 
+test_that("crypto: Source is valid", {
+  expect_error(load_crypto_timeseries("ETHUSDT", 
+                                "1d",
+                                start_date="2021-01-01",
+                                end_date="2021-01-02",
+                                source = "coinbase"),
+               regexp = "Currently only")
+})
+
+                              
+
 ## Dividends tests
 # Unit tests for load_yahoo_dividends function
 
@@ -316,4 +373,199 @@ test_that("dividends: empty result returns NULL data and non-empty errors", {
   )
   expect_null(res$data)
   expect_true(nrow(res$errors) > 0)
+})
+
+
+
+# Mock data for testing
+create_mock_ohlcv_data <- function(symbol, dates, open_prices) {
+  tibble(
+    symbol = symbol,
+    open_time = as.POSIXct(dates),
+    open = open_prices,
+    high = open_prices * 1.02,
+    low = open_prices * 0.98,
+    close = open_prices * 1.01,
+    volume = rep(1000000, length(dates))
+  )
+}
+
+# Create mock splits data
+mock_splits <- tibble(
+  symbol = c(rep("AAPL", 5), rep("TSLA", 2)),
+  date = as.Date(c("1987-06-16", "2000-06-21", "2005-02-28", "2014-06-09", "2020-08-31",
+                   "2020-08-31", "2022-08-25")),
+  value = c(0.5, 0.5, 0.5, 0.143, 0.25, 0.2, 0.333)
+)
+
+test_that("adjust_for_splits handles data with no splits", {
+  suppressWarnings(
+    # Mock tidyquant to return empty splits data
+    with_mocked_bindings(
+      tq_get = function(...) NULL,
+      {
+        data <- create_mock_ohlcv_data("NOSPLT", "2023-01-01", 100)
+        result <- adjust_for_splits(data, symbols = "NOSPLT")
+        
+        expect_equal(result, data)
+        # expect_message(adjust_for_splits(data, "NOSPLT"), "No splits found")
+      }
+    )
+  )
+})
+
+# Helper function to create mock OHLCV data
+create_test_ohlcv <- function(symbols, dates, base_price = 100) {
+  expand.grid(
+    symbol = symbols,
+    date = as.Date(dates),
+    stringsAsFactors = FALSE
+  ) %>%
+    mutate(
+      open_time = as.POSIXct(date),
+      open = base_price,
+      high = base_price * 1.02,
+      low = base_price * 0.98,
+      close = base_price * 1.01,
+      volume = 1000000
+    ) %>%
+    arrange(symbol, date) %>% 
+    select(symbol, open_time, open, high, low, close, volume)
+}
+
+# Test data: AAPL splits
+test_splits <- tibble(
+  symbol = c("AAPL", "AAPL", "AAPL"),
+  date = as.Date(c("2020-08-31", "2014-06-09", "2005-02-28")),
+  value = c(0.25, 0.143, 0.5)  # 4:1, 7:1, 2:1 splits
+)
+
+test_that("calculate_adjustment_factors works correctly", {
+  result <- calculate_adjustment_factors(test_splits)
+  
+  expect_equal(nrow(result), 3)
+  expect_true(all(c("symbol", "date", "adj_factor") %in% names(result)))
+  
+  # Check cumulative factors (working backwards from most recent)
+  # 2020 split (most recent): factor = 0.25
+  # 2014 split: factor = 0.25 * 0.143 = 0.03575  
+  # 2005 split (oldest): factor = 0.25 * 0.143 * 0.5 = 0.017875
+  
+  result_by_date <- result %>% arrange(date)
+  expect_equal(result_by_date$adj_factor[3], 0.25, tolerance = 1e-10)  # 2020
+  expect_equal(result_by_date$adj_factor[2], 0.25 * 0.143, tolerance = 1e-10)  # 2014
+  expect_equal(result_by_date$adj_factor[1], 0.25 * 0.143 * 0.5, tolerance = 1e-10)  # 2005
+})
+
+test_that("adjust_for_splits handles empty data", {
+  empty_data <- create_test_ohlcv(character(0), character(0))
+  result <- adjust_for_splits(empty_data, "AAPL", test_splits)
+  
+  expect_equal(nrow(result), 0)
+  expect_equal(names(result), names(empty_data))
+})
+
+test_that("adjust_for_splits handles missing columns", {
+  bad_data <- tibble(symbol = "AAPL", open_time = Sys.time())
+  
+  expect_error(
+    adjust_for_splits(bad_data, "AAPL", test_splits),
+    "Missing required columns"
+  )
+})
+
+test_that("adjust_for_splits handles no splits data", {
+  data <- create_test_ohlcv("NOSPLITS", "2023-01-01")
+  
+  expect_message(
+    result <- adjust_for_splits(data, "NOSPLITS", tibble()),
+    "No splits found"
+  )
+  
+  expect_equal(result, data)
+})
+
+test_that("adjust_for_splits correctly adjusts prices before splits", {
+  # Data from before all splits (should get maximum adjustment)
+  data <- create_test_ohlcv("AAPL", "2000-01-01", 100)
+  result <- adjust_for_splits(data, "AAPL", test_splits)
+  
+  # Expected adjustment factor: 0.25 * 0.143 * 0.5 = 0.017875
+  expected_factor <- 0.25 * 0.143 * 0.5
+  expected_price <- 100 * expected_factor
+  expected_volume <- 1000000 / expected_factor
+  
+  expect_equal(result$open[1], expected_price, tolerance = 1e-10)
+  expect_equal(result$volume[1], expected_volume, tolerance = 1e-10)
+})
+
+test_that("adjust_for_splits correctly adjusts prices between splits", {
+  # Data between 2014 split and 2020 split
+  data <- create_test_ohlcv("AAPL", "2018-01-01", 100)
+  result <- adjust_for_splits(data, "AAPL", test_splits)
+  
+  # Should only be adjusted by 2020 split: 0.25
+  expected_price <- 100 * 0.25
+  expected_volume <- 1000000 / 0.25
+  
+  expect_equal(result$open[1], expected_price, tolerance = 1e-10)
+  expect_equal(result$volume[1], expected_volume, tolerance = 1e-10)
+})
+
+test_that("adjust_for_splits doesn't adjust prices after all splits", {
+  # Data after all splits
+  data <- create_test_ohlcv("AAPL", "2023-01-01", 100)
+  result <- adjust_for_splits(data, "AAPL", test_splits)
+  
+  # Should have no adjustment
+  expect_equal(result$open[1], 100, tolerance = 1e-10)
+  expect_equal(result$volume[1], 1000000, tolerance = 1e-10)
+})
+
+test_that("adjust_for_splits handles multiple symbols", {
+  # Create splits for two symbols
+  multi_splits <- tibble(
+    symbol = c("AAPL", "AAPL", "TSLA", "TSLA"),
+    date = as.Date(c("2020-08-31", "2014-06-09", "2022-08-25", "2020-08-31")),
+    value = c(0.25, 0.143, 0.333, 0.2)
+  )
+  
+  data <- create_test_ohlcv(c("AAPL", "TSLA"), c("2010-01-01", "2023-01-01"), 100)
+  result <- adjust_for_splits(data, c("AAPL", "TSLA"), multi_splits)
+  
+  expect_equal(nrow(result), 4)  # 2 symbols × 2 dates
+  
+  # Check AAPL adjustment for 2010 data (before both splits)
+  aapl_2010 <- result %>% filter(symbol == "AAPL", as.Date(open_time) == "2010-01-01")
+  expected_aapl_factor <- 0.25 * 0.143
+  expect_equal(aapl_2010$open, 100 * expected_aapl_factor, tolerance = 1e-10)
+  
+  # Check TSLA adjustment for 2010 data (before both splits)
+  tsla_2010 <- result %>% filter(symbol == "TSLA", as.Date(open_time) == "2010-01-01")
+  expected_tsla_factor <- 0.333 * 0.2
+  expect_equal(tsla_2010$open, 100 * expected_tsla_factor, tolerance = 1e-10)
+})
+
+test_that("adjust_for_splits preserves data structure", {
+  data <- create_test_ohlcv("AAPL", c("2020-01-01", "2023-01-01"), 100)
+  result <- adjust_for_splits(data, "AAPL", test_splits)
+  
+  # Should have same number of rows and basic structure
+  expect_equal(nrow(result), nrow(data))
+  expect_equal(names(result), names(data))
+  
+  # Check data types
+  expect_true(is.character(result$symbol))
+  expect_true("POSIXct" %in% class(result$open_time))
+  expect_true(is.numeric(result$open))
+  expect_true(is.numeric(result$volume))
+})
+
+test_that("adjust_for_splits handles edge case - data on split date", {
+  # Data exactly on split date
+  data <- create_test_ohlcv("AAPL", "2020-08-31", 100)
+  result <- adjust_for_splits(data, "AAPL", test_splits)
+  
+  # Should be adjusted by this split (and future ones don't apply)
+  expect_equal(result$open[1], 100 * 0.25, tolerance = 1e-10)
 })

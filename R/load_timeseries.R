@@ -1,4 +1,4 @@
-#' load_crypto_timeseries
+#' load_crypto_timeseries ############
 #'
 #' Load crypto timeseries from Binance.
 #'
@@ -102,7 +102,7 @@ load_crypto_timeseries <- function(pair,
   return(results)
 }
 
-#' load_stock_timeseries
+#' load_stock_timeseries ############
 #'
 #' Load stock timeseries from Yahoo Finance (daily) or Tiingo (intraday).
 #'
@@ -140,17 +140,18 @@ load_crypto_timeseries <- function(pair,
 #' 
 load_stock_timeseries <- function(symbol,
                                   interval,
-                                  chunk_size = NA,
+                                  chunk_size = NULL,
                                   start_date,
                                   end_date,
                                   adjust_splits = TRUE) {
 
   # Determine chunk size
-  chunk_size <- dplyr::case_when(
-    is.na(chunk_size) & grepl("m|h", interval) ~ 20000,
-    is.na(chunk_size) ~ 1000,
-    TRUE ~ chunk_size
-  )
+  if (is.null(chunk_size)) {
+    chunk_size <- case_when(
+      grepl("m|h", interval) ~ 20000,
+      TRUE ~ 1000
+    )
+  }
 
   # Validation
   valid_intervals <- c("1m","3m","5m","15m","30m","1h","2h","4h","6h","8h","12h","1d")
@@ -254,7 +255,7 @@ load_stock_timeseries <- function(symbol,
   return(results)
 }
 
-#' load_yahoo_dividends
+#' load_yahoo_dividends ############
 #'
 #' Load dividends from Yahoo Finance using tidyquant.
 #'
@@ -330,8 +331,9 @@ load_yahoo_dividends <- function(symbols, start_date, end_date = as.character(Sy
 
 
 
-#---- Helper Functions ----
-#' Validate inputs
+# Helper Functions ##########
+
+#' Validate inputs ##########
 #' 
 #' Check types, formats and ranges passed to other functions.
 #' @param symbol Character vector. Stock ticker(s).
@@ -351,13 +353,16 @@ validate_inputs <- function(symbol, interval, chunk_size, max_chunk_size, start_
   if (!is_valid_date(end_date)) stop("end_date must be YYYY-MM-DD")
   if (as.Date(start_date) > as.Date(end_date)) stop("start_date must be before end_date")
   if (as.Date(start_date) > Sys.Date()) stop("start_date cannot be in the future")
+  if (!is.numeric(chunk_size) || chunk_size != as.integer(chunk_size) || is.na(chunk_size) || chunk_size <= 0 || chunk_size < 10) {
+    stop("chunk_size must be a positive integer at least 10")
+  }
   if (chunk_size > max_chunk_size) stop(paste0("chunk_size cannot exceed ",max_chunk_size, " (API limits)"))
   if (!(interval %in% valid_intervals)) {
     stop("Invalid interval. Must be one of: ", paste(valid_intervals, collapse = ", "))
   }
 }
 
-#' map_interval
+#' map_interval ##########
 #' 
 #' Check if string is valid interval and map to tidyquant format.
 #' 
@@ -403,7 +408,7 @@ check_tiingo_symbols <- function(symbols) {
   }
 }
 
-#' make_query_chunks
+#' make_query_chunks ##########
 #' 
 #' Split date range into chunks based on interval and chunk size.
 #' @param seq_interval Character. Interval in tidyquant format (e.g. "1 min").
@@ -440,45 +445,145 @@ make_query_chunks <- function(seq_interval, chunk_size, start_date, end_date, sy
   )
 }
 
-
-#' adjust_for_splits
+#' adjust_for_splits ##########
 #' 
-#' Adjust OHLCV prices for stock splits using Tiingo splits data.
-#' @param data Tibble with OHLCV timeseries.
-#' @param symbols Character vector. Stock ticker(s).
-#' @return Tibble with adjusted OHLCV prices.
-#' @noRd
-#' @import dplyr tidyquant zoo
+#' Adjust OHLCV prices for stock splits using splits data.
 #' 
-adjust_for_splits <- function(data, symbols) {
-
-  splits <- tidyquant::tq_get(symbols, get = "splits",
-                              from = "1900-01-01", to = Sys.Date())
-  
-  if (is.null(splits) || nrow(splits) == 0) {
-    message("No splits found, returning unadjusted data")
+#' This function adjusts historical price data for stock splits by applying
+#' cumulative adjustment factors. Prices before splits are adjusted downward,
+#' while volume is adjusted upward to maintain economic equivalence.
+#' 
+#' @param data Tibble with OHLCV timeseries containing columns:
+#'   - symbol: stock ticker
+#'   - open_time: timestamp (POSIXct or Date)
+#'   - open, high, low, close: price columns
+#'   - volume: volume column
+#' @param symbols Character vector of stock ticker(s) to adjust
+#' @param splits_data Optional tibble with splits data. If NULL, fetches from tidyquant.
+#'   Must contain columns: symbol, date, value (split ratio)
+#' @return Tibble with split-adjusted OHLCV prices
+#' @export
+adjust_for_splits <- function(data, symbols, splits_data = NULL) {
+  # Input validation
+  if (nrow(data) == 0) {
     return(data)
   }
-  ratios <- splits %>%
-    dplyr::mutate(adjRatio = rev(cumprod(rev(value)))) %>%
-    dplyr::rename(day = date)
-
-  data %>%
-    dplyr::mutate(day = as.Date(date)) %>%
-    dplyr::left_join(ratios, by = c("day", "symbol")) %>%
-    dplyr::mutate(
-      adjRatio = dplyr::lead(adjRatio, 1),
-      adjRatio = zoo::na.locf(adjRatio, fromLast = TRUE, na.rm = FALSE),
-      adjRatio = zoo::na.fill(adjRatio, fill = 1.0),
-      open  = open  * adjRatio,
-      high  = high  * adjRatio,
-      low   = low   * adjRatio,
-      close = close * adjRatio,
-      volume = volume / adjRatio
+  
+  required_cols <- c("symbol", "open_time", "open", "high", "low", "close", "volume")
+  missing_cols <- setdiff(required_cols, names(data))
+  if (length(missing_cols) > 0) {
+    stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
+  }
+  
+  # Get or use splits data
+  if (is.null(splits_data)) {
+    splits_data <- tryCatch({
+      result <- tidyquant::tq_get(symbols, 
+                                get = "splits",
+                                from = "1900-01-01", 
+                                to = Sys.Date())
+      # Handle the case where tq_get returns NA instead of throwing error
+      if (is.na(result) || is.null(result)) {
+        NULL
+      } else {
+        result
+      }
+    }, error = function(e) {
+      warning("Failed to fetch splits data: ", e$message)
+      NULL
+    })
+  }
+  
+  # If no splits, return original data
+  if (is.null(splits_data) || nrow(splits_data) == 0) {
+    message("No splits found for symbols: ", paste(symbols, collapse = ", "))
+    return(data)
+  }
+  
+  # Validate splits data
+  splits_required_cols <- c("symbol", "date", "value")
+  missing_splits_cols <- setdiff(splits_required_cols, names(splits_data))
+  if (length(missing_splits_cols) > 0) {
+    stop("Splits data missing required columns: ", paste(missing_splits_cols, collapse = ", "))
+  }
+  
+  # Calculate adjustment factors for each symbol
+  adjustment_factors <- calculate_adjustment_factors(splits_data)
+  
+  # Apply adjustments
+  # Apply adjustments
+  result <- data %>%
+    mutate(date = as.Date(open_time)) %>%
+    left_join(adjustment_factors, by = c("symbol", "date")) %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(
+      # For each date, find the adjustment factor that applies
+      # This should be the factor from the next split date (or 1.0 if after all splits)
+      adj_factor = determine_adjustment_factor(date, adjustment_factors[adjustment_factors$symbol == first(symbol), ])
     ) %>%
-    dplyr::select(-c(day, value, adjRatio))
+    ungroup() %>%
+    mutate(
+      # Apply adjustments
+      open = open * adj_factor,
+      high = high * adj_factor,
+      low = low * adj_factor,
+      close = close * adj_factor,
+      volume = volume / adj_factor
+    ) %>%
+    select(-date, -adj_factor)
+  
+  return(result)
 }
 
+#' determine_adjustment_factor ##########
+#' 
+#' Determine the adjustment factor for a given date 
+#' 
+#' For each date, finds the cumulative adjustment factor from all future splits
+#' 
+#' @param target_dates Vector of dates to get factors for
+#' @param splits_for_symbol Tibble with date and adj_factor columns for one symbol
+#' @return Vector of adjustment factors
+#' @noRd
+determine_adjustment_factor <- function(target_dates, splits_for_symbol) {
+  sapply(target_dates, function(target_date) {
+    # Find all splits that occur AFTER this target date
+    future_splits <- splits_for_symbol[splits_for_symbol$date >= target_date, ]
+    
+    if (nrow(future_splits) == 0) {
+      # No future splits, no adjustment needed
+      return(1.0)
+    } else {
+      # Find the adjustment factor from the earliest future split
+      # (which already contains the cumulative effect of all future splits)
+      earliest_future <- future_splits[which.min(future_splits$date), ]
+      return(earliest_future$adj_factor)
+    }
+  })
+}
 
+#' calculate_adjustment_factors ##########
+#' 
+#' Calculate cumulative adjustment factors for splits 
+#' 
+#' For each symbol and date, calculates the cumulative adjustment factor
+#' that should be applied to prices before that date.
+#' 
+#' @param splits_data Tibble with columns: symbol, date, value
+#' @return Tibble with columns: symbol, date, adj_factor
+#' @noRd
+calculate_adjustment_factors <- function(splits_data) {
 
+  splits_data %>%
+    arrange(symbol, desc(date)) %>%  # Sort by symbol, then by date DESCENDING (newest first)
+    dplyr::group_by(symbol) %>%
+    dplyr::mutate(
+      # Calculate cumulative adjustment from newest split backwards
+      # Each adj_factor represents the total adjustment needed for dates BEFORE this split
+      adj_factor = cumprod(value)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(symbol, date, adj_factor)
 
+}
