@@ -2,7 +2,7 @@
 % Please edit documentation in R/load_timeseries.R
 \name{load_crypto_timeseries}
 \alias{load_crypto_timeseries}
-\title{load_crypto_timeseries}
+\title{load_crypto_timeseries ############}
 \usage{
 load_crypto_timeseries(
   pair,

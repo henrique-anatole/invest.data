@@ -2,31 +2,31 @@
 % Please edit documentation in R/load_timeseries.R
 \name{load_yahoo_dividends}
 \alias{load_yahoo_dividends}
-\title{load_yahoo_dividends
-Load dividends from yahoo finance using tidyquant.}
+\title{load_yahoo_dividends ############}
 \usage{
-load_yahoo_dividends(
-  list_tikers,
-  start_date,
-  end_date = as.character(Sys.Date())
-)
+load_yahoo_dividends(symbols, start_date, end_date = as.character(Sys.Date()))
 }
 \arguments{
-\item{list_tikers}{A vector of stock symbols}
+\item{symbols}{Character vector. Stock ticker(s) to retrieve dividends for.}
 
-\item{start_date}{Start date of the time series (YYYY-MM-DD)}
+\item{start_date}{Character. Start date in "YYYY-MM-DD".}
 
-\item{end_date}{End date of the time series (YYYY-MM-DD). Default is today's date.}
+\item{end_date}{Character. End date in "YYYY-MM-DD". Default is today's date.}
 }
 \value{
-A tibble with the dividends data
+A list with:
+\describe{
+\item{data}{Tibble with dividends data.}
+\item{errors}{Tibble with symbols that could not be retrieved, including error message.}
+}
 }
 \description{
-load_yahoo_dividends
-Load dividends from yahoo finance using tidyquant.
+Load dividends from Yahoo Finance using tidyquant.
 }
 \examples{
-#' # Load dividends for AAPL and MSFT from 2020-01-01 to 2022-01-01
-dividends = load_yahoo_dividends(list_tikers = c("AAPL", "MSFT"), start_date = "2020-01-01", end_date = "2022-01-01")
-
+dividends <- load_yahoo_dividends(
+  symbols = c("AAPL", "MSFT"),
+  start_date = "2020-01-01",
+  end_date   = "2022-01-01"
+)
 }

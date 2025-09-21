@@ -2,12 +2,12 @@
 % Please edit documentation in R/load_timeseries.R
 \name{load_stock_timeseries}
 \alias{load_stock_timeseries}
-\title{load_stock_timeseries}
+\title{load_stock_timeseries ############}
 \usage{
 load_stock_timeseries(
   symbol,
   interval,
-  chunk_size = NA,
+  chunk_size = NULL,
   start_date,
   end_date,
   adjust_splits = TRUE
