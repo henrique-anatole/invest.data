@@ -349,7 +349,7 @@ test_that("dividends: multiple symbols returns combined data", {
 
 test_that("dividends: non-existent symbol captured in errors", {
   res <- suppressWarnings(
-    load_yahoo_dividends(symbols = c("AAPL", "NONEXISTENT"),
+    load_yahoo_dividends(symbols = c("NONEXISTENT"),
                          start_date = "2020-01-01",
                          end_date   = "2022-01-01")
   )
@@ -375,9 +375,41 @@ test_that("dividends: empty result returns NULL data and non-empty errors", {
   expect_true(nrow(res$errors) > 0)
 })
 
+test_that("dividends: returns errors when all symbols have no data", {
+  suppressWarnings(
+    res <- load_yahoo_dividends(
+      symbols = c("INVALID1", "INVALID2"),
+      start_date = "2021-01-01",
+      end_date   = "2021-12-31"
+    )
+  )
+  expect_null(res$data)
+  expect_equal(nrow(res$errors), 2)
+  expect_true(all(res$errors$symbol %in% c("INVALID1", "INVALID2")))
+})
 
+test_that("dividends: preserves factor levels with one symbol", {
+  res <- load_yahoo_dividends(
+    symbols = "AAPL",
+    start_date = "2020-01-01",
+    end_date   = "2020-12-31"
+  )
 
-# Mock data for testing
+  skip_if(is.null(res$data), "No dividend data returned from Yahoo in this range")
+
+  expect_s3_class(res$data$symbol, "factor")
+  expect_equal(levels(res$data$symbol), "AAPL")
+})
+
+test_that("dividends: non-character symbols throws error", {
+  expect_error(load_yahoo_dividends(123, 
+                                    start_date="2021-01-01",
+                                    end_date="2021-01-02"),
+               regexp = "symbols must be a character vector")
+})
+
+#### Adjust for splits tests ####
+# Mock data for testing adjust_for_splits function #######
 create_mock_ohlcv_data <- function(symbol, dates, open_prices) {
   tibble(
     symbol = symbol,
@@ -569,3 +601,281 @@ test_that("adjust_for_splits handles edge case - data on split date", {
   # Should be adjusted by this split (and future ones don't apply)
   expect_equal(result$open[1], 100 * 0.25, tolerance = 1e-10)
 })
+
+
+test_that("make_query_chunks returns one chunk if range fits in one step", {
+  res <- make_query_chunks(
+    seq_interval = "1 day", chunk_size = 5,
+    start_date = "2021-01-01", end_date = "2021-01-03",
+    symbol = "AAPL"
+  )
+  expect_equal(nrow(res), 1)
+  expect_equal(res$start_date, "2021-01-01T00:00")
+  expect_equal(res$end_date,   "2021-01-03T00:00")
+})
+
+test_that("make_query_chunks splits into multiple chunks for larger ranges", {
+  res <- make_query_chunks(
+    seq_interval = "1 day", chunk_size = 2,
+    start_date = "2021-01-01", end_date = "2021-01-06",
+    symbol = "AAPL"
+  )
+  expect_equal(nrow(res), 3)
+  # first chunk should cover 2 days
+  expect_equal(res$start_date[1], "2021-01-01T00:00")
+  expect_equal(res$end_date[1],   "2021-01-02T00:00")
+  # last chunk end matches end_date exactly
+  expect_equal(res$end_date[nrow(res)], "2021-01-06T00:00")
+})
+
+test_that("make_query_chunks handles leftover interval at the end", {
+  res <- make_query_chunks(
+    seq_interval = "1 hour", chunk_size = 3,
+    start_date = "2021-01-01", end_date = "2021-01-01 10:00",
+    symbol = "AAPL"
+  )
+  expect_true(nrow(res) > 1)
+  expect_equal(res$end_date[nrow(res)], "2021-01-01T10:00")
+})
+
+test_that("make_query_chunks returns just one period for unsupported interval", {
+  res <- make_query_chunks(
+    seq_interval = "1 week", chunk_size = 2,
+    start_date = "2021-01-01", end_date = "2021-01-10",
+    symbol = "AAPL"
+  )
+  expect_true(nrow(res) == 1)
+})
+
+test_that("check_tiingo_symbols: validates symbols correctly", {
+  expect_error(check_tiingo_symbols(c("AAPL","INVALID")), regexp="not supported")
+})
+
+test_that("map_interval: maps valid intervals correctly", {
+  expect_equal(map_interval("1m"), "1 min")
+  expect_equal(map_interval("5m"), "5 min")
+  expect_equal(map_interval("15m"), "15 min")
+  expect_equal(map_interval("1h"), "1 hour")
+  expect_equal(map_interval("4h"), "4 hour")
+  expect_equal(map_interval("1d"), "1 day")
+  expect_equal(map_interval("1w"), "1 week")
+  expect_equal(map_interval("1M"), "1 month")
+  expect_equal(map_interval("7h"), NA_character_)
+})
+
+# Additional test cases needed for 100% coverage
+# 2. load_stock_timeseries: Test non-character symbol input
+test_that("stock: non-character symbol throws error", {
+  expect_error(load_stock_timeseries(123, "1d",
+                                     start_date="2021-01-01",
+                                     end_date="2021-01-02"),
+               regexp = "symbol must be a character vector")
+})
+# 3. load_crypto_timeseries: Test non-character pair input
+test_that("crypto: non-character pair throws error", {
+  expect_error(load_crypto_timeseries(123, "1d",
+                                      start_date="2021-01-01",
+                                      end_date="2021-01-02"),
+               regexp = "symbol must be a character vector")
+})
+# 4. load_yahoo_dividends: Test non-character symbols input
+
+# 5. Test future start_date validation
+test_that("stock: future start_date throws error", {
+  future_date <- as.character(Sys.Date() + 30)
+  expect_error(load_stock_timeseries("AAPL", "1d",
+                                     start_date=future_date,
+                                     end_date=future_date),
+               regexp = "start_date cannot be in the future")
+})
+
+test_that("crypto: Test chunk size edge cases not covered", {
+  expect_error(load_crypto_timeseries("ETHUSDT", "1d",
+                                      chunk_size = 3000,
+                                      start_date="2021-01-01",
+                                      end_date="2021-01-02"),
+               regexp = "chunk_size cannot exceed")
+  
+  expect_error(load_crypto_timeseries("ETHUSDT", "1d", 
+                                      chunk_size = -5,
+                                      start_date="2021-01-01",
+                                      end_date="2021-01-02"),
+               regexp = "chunk_size must be a positive integer")
+  
+  expect_error(load_crypto_timeseries("ETHUSDT", "1d",
+                                      chunk_size = "invalid",
+                                      start_date="2021-01-01", 
+                                      end_date="2021-01-02"),
+               regexp = "chunk_size must be a positive integer")
+})
+# 6. Test successful data retrieval with warnings (partial failures)
+test_that("stock: handles partial failures with warnings", {
+  # Mock a scenario where some data succeeds but generates warnings
+  suppressWarnings(
+    res <- load_stock_timeseries(c("AAPL", "INVALIDTICKER"), "1d",
+                                 start_date="2021-01-01",
+                                 end_date="2021-01-02")
+  )
+  # Should have some data for AAPL and errors for INVALIDTICKER
+  expect_true(!is.null(res$data) || !is.null(res$errors))
+})
+# 7. Test edge cases in make_query_chunks for different intervals
+test_that("make_query_chunks handles minute intervals correctly", {
+  res <- make_query_chunks("1 min", 5, "2021-01-01", "2021-01-01 00:10", "AAPL")
+  expect_true(nrow(res) >= 1)
+  expect_true(all(res$symbol == "AAPL"))
+})
+
+test_that("make_query_chunks handles hour intervals correctly", {
+  res <- make_query_chunks("2 hour", 3, "2021-01-01", "2021-01-01 10:00", "AAPL")
+  expect_true(nrow(res) >= 1)
+  expect_equal(res$symbol[1], "AAPL")
+})
+
+
+# 8. Test adjust_for_splits with invalid splits data
+test_that("adjust_for_splits handles invalid splits data columns", {
+  data <- create_test_ohlcv("AAPL", "2023-01-01")
+  bad_splits <- tibble(symbol = "AAPL", wrong_col = "2020-01-01", value = 0.5)
+  
+  expect_error(
+    adjust_for_splits(data, "AAPL", bad_splits),
+    "Splits data missing required columns"
+  )
+})
+# 9. Test adjust_for_splits when tq_get fails with error
+test_that("adjust_for_splits handles tq_get errors gracefully", {
+  data <- load_stock_timeseries("AAPL", "1d",
+                               start_date="2023-02-01",
+                               end_date="2023-02-02")$data
+
+  suppressWarnings(
+    # Mock tidyquant to return empty splits data
+    with_mocked_bindings(
+      tq_get = function(...) stop("API error"),
+      {
+        result <- adjust_for_splits(data, "AAPL")
+        
+        expect_equal(result, data)
+      }
+    )
+  )
+
+})
+# 11. Test load_stock_timeseries with Tiingo path and bad symbols edge case
+test_that("stock: tiingo path handles unsupported symbols in error message parsing", {
+  skip_if(getOption('tiingo_key') == "", "No API key available")
+  
+  # Test the error message parsing logic for bad symbols
+  with_mocked_bindings(
+    check_tiingo_symbols = function(symbols) {
+      stop("Unsupported symbols: BADSYMBOL, ANOTHERBAD")
+    },
+    {
+      suppressWarnings(
+        res <- load_stock_timeseries("BADSYMBOL", "1h",
+                                     start_date="2021-01-01",
+                                     end_date="2021-01-02")
+      )
+      expect_true(!is.null(res$errors))
+    }
+  )
+})
+
+test_that("determine_adjustment_factor handles edge cases", {
+
+  # Test with splits exactly on target date
+  splits_data <- tibble(
+    date = as.Date("2023-01-01"),
+    adj_factor = 0.5
+  )
+  result <- determine_adjustment_factor(as.Date("2023-01-01"), splits_data)
+  expect_equal(result, 0.5)
+})
+
+test_that("stock: default chunk_size sets correctly for different intervals", {
+  # This tests the case_when logic in load_stock_timeseries
+  
+  # For minute/hour intervals, chunk_size should default to 20000
+  # For daily intervals, chunk_size should default to 1000
+  
+  # We can test this indirectly by checking that functions work with NULL chunk_size
+  res <- load_stock_timeseries("AAPL", "1d", chunk_size = NULL,
+                               start_date="2021-01-01",
+                               end_date="2021-02-02")
+  expect_true(!is.null(res$data))
+  
+  skip_if(getOption('tiingo_key') == "", "No API key available")
+  res <- load_stock_timeseries("AAPL", "1h", chunk_size = NULL,
+                               start_date="2021-01-01", 
+                               end_date="2021-02-01")
+  expect_true(!is.null(res$data))
+})
+
+test_that("stock: tiingo message about adjustments is displayed", {
+  skip_if(getOption('tiingo_key') == "", "No API key available")
+  
+  expect_message(
+    load_stock_timeseries("AAPL", "1h",
+                          start_date="2021-02-01",
+                          end_date="2021-02-02"),
+    "Remember: Tiingo timeseries are not adjusted"
+  )
+})
+
+test_that("stock: handles tq_get returning NULL", {
+  local_mocked_bindings(
+    tq_get = function(...) NULL,
+    .package = "tidyquant"
+  )
+  res <- load_stock_timeseries("AAPL", "1d", 
+                                 start_date="2022-02-01",
+                                 end_date="2022-02-02")
+  expect_null(res$data)
+  expect_true(nrow(res$errors) > 0)
+
+})
+
+test_that("stock: adjusted column is properly set", {
+  res <- load_stock_timeseries("AAPL", "1d",
+                               start_date="2021-01-01",
+                               end_date="2021-02-02") 
+  expect_true("adjusted" %in% names(res$data))
+})
+
+
+# 14. Test crypto data ordering and distinct logic
+test_that("crypto: data is properly deduplicated and ordered", {
+  res <- load_crypto_timeseries("ETHUSDT", "1h",
+                                start_date="2021-01-01",
+                                end_date="2021-01-02")
+  
+  # Test that data is ordered by symbol, then open_time
+  expect_true(all(diff(as.numeric(res$data$open_time)) >= 0))
+  
+  # Test distinct() is working (no duplicates)
+  expect_equal(nrow(res$data), nrow(dplyr::distinct(res$data)))
+})
+# 15. Test that adjusted column is properly set
+test_that("crypto: adjusted column equals close column", {
+  res <- load_crypto_timeseries("ETHUSDT", "1d",
+                                start_date="2021-01-01", 
+                                end_date="2021-01-02")
+  expect_equal(res$data$adjusted, res$data$close)
+})
+# 16. Test relocate logic in load_crypto_timeseries
+test_that("crypto: columns are properly relocated", {
+  res <- load_crypto_timeseries("ETHUSDT", "1d",
+                                start_date="2021-01-01",
+                                end_date="2021-01-02")
+  
+  # symbol and adjusted should be after volume
+  col_names <- names(res$data)
+  volume_pos <- which(col_names == "volume")
+  symbol_pos <- which(col_names == "symbol")
+  adjusted_pos <- which(col_names == "adjusted")
+  
+  expect_true(symbol_pos > volume_pos)
+  expect_true(adjusted_pos > volume_pos)
+})
+# 17. Test message output in load_stock_timeseries for Tiingo

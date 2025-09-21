@@ -58,10 +58,10 @@ load_crypto_timeseries <- function(pair,
             start_time = queries$start_date[i],
             end_time   = queries$end_date[i]
           )
-          if (is.null(temp) || nrow(temp) == 0) {
-            warning("No data for ", queries$symbol[i], " in ", queries$start_date[i], " - ", queries$end_date[i])
-            return(list(data = NULL, error = queries[i,]))
-          }
+          # if (is.null(temp) || nrow(temp) == 0) {
+          #   # warning("No data for ", queries$symbol[i], " in ", queries$start_date[i], " - ", queries$end_date[i])
+          #   return(list(data = NULL, error = queries[i,]))
+          # }
           list(data = temp, error = NULL)
         },
         error = function(e) {
@@ -216,7 +216,7 @@ load_stock_timeseries <- function(symbol,
           resample_frequency = gsub(" ", "", seq_interval)
         )
         if (is.null(temp) || nrow(temp) == 0) {
-          warning("No data for ", queries$symbol[i], " in ", queries$start_date[i], " - ", queries$end_date[i])
+          # warning("No data for ", queries$symbol[i], " in ", queries$start_date[i], " - ", queries$end_date[i])
           return(list(data = NULL, error = queries[i,]))
         }
         list(data = temp, error = NULL)
@@ -229,7 +229,14 @@ load_stock_timeseries <- function(symbol,
   })
 
   # Combine results & errors
-  all_data   <- purrr::map_dfr(results_list, "data") %>% dplyr::distinct()
+  all_data   <- purrr::map_dfr(results_list, "data") %>% 
+    dplyr::distinct() 
+
+  if (nrow(all_data) > 0) {
+    all_data <- all_data %>%
+      dplyr::rename(open_time = "date") # ensure consistent column name
+  }
+  
   all_errors <- purrr::map_dfr(results_list, "error")
   all_errors <- dplyr::bind_rows(error_records, all_errors)
 
@@ -244,7 +251,7 @@ load_stock_timeseries <- function(symbol,
   if (!is.null(all_data) && nrow(all_data) > 0) {
     results$data <- all_data %>%
       dplyr::mutate(symbol = symbol) %>%   # ensure column exists
-      dplyr::rename(open_time = "date") %>%
+      # dplyr::rename(open_time = "date") %>%
       dplyr::relocate(symbol, .after = "volume")
   }
 
@@ -287,8 +294,8 @@ load_yahoo_dividends <- function(symbols, start_date, end_date = as.character(Sy
 
   # Run queries for each symbol
   results <- purrr::map(symbols, function(s) {
-    tryCatch(
-      {
+    # tryCatch(
+    #   {
         temp <- tidyquant::tq_get(
           x = s,
           get = "dividends",
@@ -297,17 +304,17 @@ load_yahoo_dividends <- function(symbols, start_date, end_date = as.character(Sy
         )
 
         if (any(is.null(temp), is.na(temp), nrow(temp) == 0)) {
-          warning("No data for ", s, " in ", start_date, " - ", end_date)
+          # warning("No data for ", s, " in ", start_date, " - ", end_date)
           return(list(data = NULL, error = tibble(symbol = s, error_message = "No data returned")))
         }
 
         list(data = temp, error = NULL)
-      },
-      error = function(e) {
-        list(data = NULL,
-             error = tibble(symbol = s, error_message = e$message))
-      }
-    )
+    #   },
+    #   error = function(e) {
+    #     list(data = NULL,
+    #          error = tibble(symbol = s, error_message = e$message))
+    #   }
+    # )
   })
 
   # Combine results
@@ -425,17 +432,18 @@ make_query_chunks <- function(seq_interval, chunk_size, start_date, end_date, sy
   period <- stringr::str_extract(seq_interval, "[a-z]+")
   by     <- paste(chunk_size * number, period)
 
+  # Step is chunk_size * number - 1 to avoid overlapping periods
   step <- dplyr::case_when(
     period == "min"  ~ lubridate::minutes(chunk_size*number-1),
     period == "hour" ~ lubridate::hours(chunk_size*number-1),
     period == "day"  ~ lubridate::days(chunk_size*number-1)
-  )
+  ) # other periods return NA
 
-  start_seq <- seq(as.POSIXct(start_date, tz = "UTC"),
+  start_seq <- base::seq(as.POSIXct(start_date, tz = "UTC"),
                    as.POSIXct(end_date, tz = "UTC"),
                    by = by)
 
-  end_seq <- start_seq + step
+  end_seq <- start_seq + step # as other periods return NA end_seq will be NA, later replaced by end_date 
   end_seq[length(end_seq)] <- as.POSIXct(end_date, tz = "UTC")
 
   dplyr::tibble(
@@ -477,21 +485,31 @@ adjust_for_splits <- function(data, symbols, splits_data = NULL) {
   
   # Get or use splits data
   if (is.null(splits_data)) {
-    splits_data <- tryCatch({
-      result <- tidyquant::tq_get(symbols, 
+    # splits_data <- tryCatch({
+    #   result <- tidyquant::tq_get(symbols, 
+    #                             get = "splits",
+    #                             from = "1900-01-01", 
+    #                             to = Sys.Date())
+    #   # Handle the case where tq_get returns NA instead of throwing error
+    #   if (all(is.na(result)) || is.null(result)) {
+    #     NULL
+    #   } else {
+    #     result
+    #   }
+    # }, error = function(e) {
+    #   warning("Failed to fetch splits data: ", e$message)
+    #   NULL
+    # })
+
+    result <- tidyquant::tq_get(symbols, 
                                 get = "splits",
                                 from = "1900-01-01", 
                                 to = Sys.Date())
       # Handle the case where tq_get returns NA instead of throwing error
-      if (is.na(result) || is.null(result)) {
-        NULL
-      } else {
-        result
-      }
-    }, error = function(e) {
-      warning("Failed to fetch splits data: ", e$message)
-      NULL
-    })
+      if (all(is.na(result)) || is.null(result)) {
+        result <- NULL
+      }     
+    splits_data <- result
   }
   
   # If no splits, return original data
