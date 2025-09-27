@@ -1,6 +1,6 @@
 Package: invest.funks
 Title: Fetch financial data from online sources
-Version: 0.0.0.9000
+Version: 1.0
 Authors@R: 
     person("Henrique", "Ramos", , "first.last@example.com", role = c("aut", "cre"))
 Description: This package provides functions to fetch financial data 
@@ -18,9 +18,9 @@ Imports:
     zoo,
     riingo,
     purrr,
-    keyring,
     binancer,
     tibble
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    keyring
 Config/testthat/edition: 3
