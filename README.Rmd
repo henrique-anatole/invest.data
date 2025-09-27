@@ -98,9 +98,9 @@ set_binance_api_key()
 
 ---
 
-✅ **Recommendation:** Use **`keyring`** whenever possible.
-⚠️ Use **environment variables** only if running in automated pipelines or servers where keyring is unavailable.
-🚫 Avoid hardcoding keys in scripts that may be shared or version-controlled.
+✅ **Recommendation:** Use **`keyring`** whenever possible.  
+⚠️ Use **environment variables** only if running in automated pipelines or servers where keyring is unavailable.  
+🚫 Avoid hardcoding keys in scripts that may be shared or version-controlled.  
 
 ---
 
