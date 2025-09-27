@@ -1,3 +1,4 @@
+
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 # invest.funks
@@ -6,43 +7,98 @@
 
 <!-- badges: end -->
 
-The goal of invest.funks is to …
+`invest.funks` is a lightweight R package that provides convenient
+wrappers to fetch and prepare financial time series data from **Yahoo
+Finance, Tiingo, and Binance**. It is designed to be used by other
+projects in the same ecosystem, offering consistent data structures,
+error tracking, and preprocessing helpers (e.g. split adjustment).
 
 ## Installation
 
-You can install the development version of invest.funks from [GitHub](https://github.com/) with:
+You can install the development version of **invest.funks** from GitHub
+with:
 
-``` r
-# install.packages("pak")
-# pak::pak("henrique-anatole/invest.funks")
-```
+# install.packages(“pak”)
+
+pak::pak(“henrique-anatole/invest.funks”)
+
+## Core functions
+
+The package provides a small set of opinionated functions that wrap
+around existing APIs and packages:
+
+- **`load_stock_timeseries()`** Retrieve **daily OHLCV** stock data from
+  Yahoo Finance, or **intraday OHLCV** data from Tiingo. Handles chunked
+  queries, split adjustment, and returns results together with failed
+  queries.
+
+- **`load_crypto_timeseries()`** Retrieve OHLCV data for crypto pairs
+  (e.g. `"ETHUSDT"`) from **Binance**. Supports multiple intervals and
+  query chunking.
+
+- **`load_yahoo_dividends()`** Retrieve **dividend payments** for one or
+  more tickers from Yahoo Finance. Returns both successfully retrieved
+  dividends and a log of any failed symbols.
+
+All functions return a **list** with two slots:
+
+- `data`: tibble with the requested time series or dividends.
+- `errors`: tibble with failed queries, or `NULL` if no errors occurred.
+
+This makes it easy to both use the data and inspect problems without
+interrupting workflows.
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+Load Apple’s daily prices from Yahoo Finance:
 
 ``` r
-# library(invest.funks)
-## basic example code
+library(invest.funks)
+
+stock_test <- load_stock_timeseries(
+  symbol     = "AAPL",
+  interval   = "1d",
+  start_date = "2021-10-01",
+  end_date   = "2022-02-01"
+)
+
+head(stock_test$data)
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+Load hourly intraday data (Tiingo):
 
 ``` r
-summary(cars)
-#>      speed           dist       
-#>  Min.   : 4.0   Min.   :  2.00  
-#>  1st Qu.:12.0   1st Qu.: 26.00  
-#>  Median :15.0   Median : 36.00  
-#>  Mean   :15.4   Mean   : 42.98  
-#>  3rd Qu.:19.0   3rd Qu.: 56.00  
-#>  Max.   :25.0   Max.   :120.00
+stock_test_hour <- load_stock_timeseries(
+  symbol     = "AAPL",
+  interval   = "1h",
+  start_date = "2021-10-01",
+  end_date   = "2021-10-02"
+)
+
+head(stock_test_hour$data)
 ```
 
-You’ll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
+Load crypto OHLCV from Binance:
 
-You can also embed plots, for example:
+``` r
+crypto_test <- load_crypto_timeseries(
+  pair       = "ETHUSDT",
+  interval   = "1m",
+  start_date = "2021-01-01",
+  end_date   = "2021-01-02"
+)
 
-<img src="man/figures/README-pressure-1.png" width="100%"/>
+head(crypto_test$data)
+```
 
-In that case, don’t forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+Load dividends from Yahoo Finance:
+
+``` r
+dividends <- load_yahoo_dividends(
+  symbols    = c("AAPL", "MSFT"),
+  start_date = "2020-01-01",
+  end_date   = "2022-01-01"
+)
+
+head(dividends$data)
+```
