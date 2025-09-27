@@ -7,46 +7,157 @@
 
 <!-- badges: end -->
 
-`invest.funks` is a lightweight R package that provides convenient
-wrappers to fetch and prepare financial time series data from **Yahoo
-Finance, Tiingo, and Binance**. It is designed to be used by other
-projects in the same ecosystem, offering consistent data structures,
-error tracking, and preprocessing helpers (e.g. split adjustment).
+`invest.funks` is a lightweight R package that provides wrappers to
+fetch and prepare financial time series data from **Yahoo Finance,
+Tiingo, and Binance**.
+
+It is designed to be used by other projects in the same ecosystem,
+offering consistent data structures, error tracking, and preprocessing
+helpers (e.g. split adjustment).
+
+------------------------------------------------------------------------
 
 ## Installation
 
-You can install the development version of **invest.funks** from GitHub
-with:
+You can install the development version of **yourpackage** from GitHub:
 
-# install.packages(“pak”)
+``` r
+# install.packages("remotes")
+remotes::install_github("youruser/yourpackage")
+```
 
-pak::pak(“henrique-anatole/invest.funks”)
+------------------------------------------------------------------------
+
+## API Key Setup
+
+Some functions require API keys (e.g., **Tiingo** for stock data and
+**Binance** for crypto data). Both are managed with helper functions:
+
+- `set_tiingo_api_key()`
+- `set_binance_api_key()`
+
+Each function looks for your credentials in the following order:
+
+1.  Direct input via function arguments
+2.  Values already set in `options()`
+3.  Environment variables (`TIINGO_KEY`, `BIN_KEY`, `BIN_SECRET`)
+4.  Secure storage in the system keyring (`keyring` package)
+
+If no valid key is found, an error is raised with setup instructions.
+
+------------------------------------------------------------------------
+
+### Recommended Method: Keyring (Secure Storage)
+
+This is the safest way to store credentials, since they are encrypted
+and managed by the OS.
+
+``` r
+# Store keys securely (one-time setup)
+keyring::key_set("tiingo_key")
+keyring::key_set("binance_key")
+keyring::key_set("binance_secret")
+
+# Later, in your session just call:
+set_tiingo_api_key()
+set_binance_api_key()
+```
+
+------------------------------------------------------------------------
+
+### Alternative Methods (Less Secure)
+
+- **Direct Input (scripts / quick testing):**
+
+  ``` r
+  set_tiingo_api_key("YOUR_TIINGO_KEY")
+  set_binance_api_key("YOUR_BINANCE_KEY", "YOUR_BINANCE_SECRET")
+  ```
+
+- **Environment Variables (persistent, but stored in plain text):** Add
+  to `~/.Renviron` or set in your shell:
+
+  ``` r
+  Sys.setenv(TIINGO_KEY = "YOUR_TIINGO_KEY")
+  Sys.setenv(BIN_KEY = "YOUR_BINANCE_KEY", BIN_SECRET = "YOUR_BINANCE_SECRET")
+  ```
+
+- **Options (only lasts for the current session):**
+
+  ``` r
+  options(tiingo_key = "YOUR_TIINGO_KEY")
+  options(bin_key = "YOUR_BINANCE_KEY", bin_secret = "YOUR_BINANCE_SECRET")
+  ```
+
+------------------------------------------------------------------------
+
+✅ **Recommendation:** Use **`keyring`** whenever possible. ⚠️ Use
+**environment variables** only if running in automated pipelines or
+servers where keyring is unavailable. 🚫 Avoid hardcoding keys in
+scripts that may be shared or version-controlled.
+
+------------------------------------------------------------------------
 
 ## Core functions
 
 The package provides a small set of opinionated functions that wrap
 around existing APIs and packages:
 
-- **`load_stock_timeseries()`** Retrieve **daily OHLCV** stock data from
-  Yahoo Finance, or **intraday OHLCV** data from Tiingo. Handles chunked
-  queries, split adjustment, and returns results together with failed
-  queries.
+- **`load_stock_timeseries()`**  
+  Retrieve **daily OHLCV** stock data from Yahoo Finance, or **intraday
+  OHLCV** data from Tiingo.  
+  Handles chunked queries, split adjustment, and returns results
+  together with failed queries.
 
-- **`load_crypto_timeseries()`** Retrieve OHLCV data for crypto pairs
-  (e.g. `"ETHUSDT"`) from **Binance**. Supports multiple intervals and
-  query chunking.
+- **`load_crypto_timeseries()`**  
+  Retrieve OHLCV data for crypto pairs (e.g. `"ETHUSDT"`) from
+  **Binance**.  
+  Supports multiple intervals and query chunking.
 
-- **`load_yahoo_dividends()`** Retrieve **dividend payments** for one or
-  more tickers from Yahoo Finance. Returns both successfully retrieved
-  dividends and a log of any failed symbols.
+- **`load_yahoo_dividends()`**  
+  Retrieve **dividend payments** for one or more tickers from Yahoo
+  Finance.  
+  Returns both successfully retrieved dividends and a log of any failed
+  symbols.
 
-All functions return a **list** with two slots:
-
-- `data`: tibble with the requested time series or dividends.
+All functions return a **list** with two slots: - `data`: tibble with
+the requested time series or dividends.  
 - `errors`: tibble with failed queries, or `NULL` if no errors occurred.
 
 This makes it easy to both use the data and inspect problems without
 interrupting workflows.
+
+## How does it compare to other packages?
+
+Several R packages already provide access to financial data:
+
+- **`tidyquant::tq_get()`**  
+  Flexible and general-purpose. Supports Yahoo, Tiingo, Alpha Vantage,
+  and more.  
+  *Difference*: `invest.funks` builds on `tq_get()` but adds **query
+  chunking**, **error logging**, and **consistent output structures**
+  (`data` + `errors`).
+
+- **`quantmod::getSymbols()`**  
+  One of the oldest tools for financial data in R. Primarily designed
+  for **xts/zoo** workflows.  
+  *Difference*: `invest.funks` returns **tibbles**, integrates with the
+  tidyverse, and provides **crypto support**.
+
+- **`riingo`**  
+  Official Tiingo client. Useful for low-level Tiingo queries.  
+  *Difference*: `invest.funks` abstracts over multiple providers (Yahoo,
+  Tiingo, Binance) with the **same interface** and adds error handling.
+
+- **`BatchGetSymbols`**  
+  Convenient batch retrieval of daily Yahoo Finance data.  
+  *Difference*: `invest.funks` is more general (intraday + crypto +
+  dividends) and maintains the same return structure across all data
+  types.
+
+In short, `invest.funks` focuses less on being a full-featured API
+client, and more on being a **unified, resilient interface** for
+fetching stock, crypto, and dividend data with minimal friction.
 
 ## Example
 

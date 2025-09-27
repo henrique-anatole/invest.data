@@ -609,81 +609,172 @@ padding-top: 0px;
 <!-- badges: end -->
 
 <p><code>invest.funks</code> is a lightweight R package that provides
-convenient wrappers to fetch and prepare financial time series data from
-<strong>Yahoo Finance, Tiingo, and Binance</strong>. It is designed to
-be used by other projects in the same ecosystem, offering consistent
-data structures, error tracking, and preprocessing helpers (e.g. split
-adjustment).</p>
+wrappers to fetch and prepare financial time series data from
+<strong>Yahoo Finance, Tiingo, and Binance</strong>.</p>
+<p>It is designed to be used by other projects in the same ecosystem,
+offering consistent data structures, error tracking, and preprocessing
+helpers (e.g. split adjustment).</p>
+<hr />
 <h2 id="installation">Installation</h2>
 <p>You can install the development version of
-<strong>invest.funks</strong> from GitHub with:</p>
-<h1 id="installpackagespak">install.packages(“pak”)</h1>
-<p>pak::pak(“henrique-anatole/invest.funks”)</p>
+<strong>yourpackage</strong> from GitHub:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># install.packages(&quot;remotes&quot;)</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;youruser/yourpackage&quot;</span>)</span></code></pre></div>
+<hr />
+<h2 id="api-key-setup">API Key Setup</h2>
+<p>Some functions require API keys (e.g., <strong>Tiingo</strong> for
+stock data and <strong>Binance</strong> for crypto data). Both are
+managed with helper functions:</p>
+<ul>
+<li><code>set_tiingo_api_key()</code></li>
+<li><code>set_binance_api_key()</code></li>
+</ul>
+<p>Each function looks for your credentials in the following order:</p>
+<ol style="list-style-type: decimal">
+<li>Direct input via function arguments</li>
+<li>Values already set in <code>options()</code></li>
+<li>Environment variables (<code>TIINGO_KEY</code>,
+<code>BIN_KEY</code>, <code>BIN_SECRET</code>)</li>
+<li>Secure storage in the system keyring (<code>keyring</code>
+package)</li>
+</ol>
+<p>If no valid key is found, an error is raised with setup
+instructions.</p>
+<hr />
+<h3 id="recommended-method-keyring-secure-storage">Recommended Method:
+Keyring (Secure Storage)</h3>
+<p>This is the safest way to store credentials, since they are encrypted
+and managed by the OS.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Store keys securely (one-time setup)</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>keyring<span class="sc">::</span><span class="fu">key_set</span>(<span class="st">&quot;tiingo_key&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>keyring<span class="sc">::</span><span class="fu">key_set</span>(<span class="st">&quot;binance_key&quot;</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>keyring<span class="sc">::</span><span class="fu">key_set</span>(<span class="st">&quot;binance_secret&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># Later, in your session just call:</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="fu">set_tiingo_api_key</span>()</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="fu">set_binance_api_key</span>()</span></code></pre></div>
+<hr />
+<h3 id="alternative-methods-less-secure">Alternative Methods (Less
+Secure)</h3>
+<ul>
+<li><p><strong>Direct Input (scripts / quick testing):</strong></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">set_tiingo_api_key</span>(<span class="st">&quot;YOUR_TIINGO_KEY&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">set_binance_api_key</span>(<span class="st">&quot;YOUR_BINANCE_KEY&quot;</span>, <span class="st">&quot;YOUR_BINANCE_SECRET&quot;</span>)</span></code></pre></div></li>
+<li><p><strong>Environment Variables (persistent, but stored in plain
+text):</strong> Add to <code>~/.Renviron</code> or set in your
+shell:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="at">TIINGO_KEY =</span> <span class="st">&quot;YOUR_TIINGO_KEY&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="at">BIN_KEY =</span> <span class="st">&quot;YOUR_BINANCE_KEY&quot;</span>, <span class="at">BIN_SECRET =</span> <span class="st">&quot;YOUR_BINANCE_SECRET&quot;</span>)</span></code></pre></div></li>
+<li><p><strong>Options (only lasts for the current
+session):</strong></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">options</span>(<span class="at">tiingo_key =</span> <span class="st">&quot;YOUR_TIINGO_KEY&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">options</span>(<span class="at">bin_key =</span> <span class="st">&quot;YOUR_BINANCE_KEY&quot;</span>, <span class="at">bin_secret =</span> <span class="st">&quot;YOUR_BINANCE_SECRET&quot;</span>)</span></code></pre></div></li>
+</ul>
+<hr />
+<p>✅ <strong>Recommendation:</strong> Use
+<strong><code>keyring</code></strong> whenever possible. ⚠️ Use
+<strong>environment variables</strong> only if running in automated
+pipelines or servers where keyring is unavailable. 🚫 Avoid hardcoding
+keys in scripts that may be shared or version-controlled.</p>
+<hr />
 <h2 id="core-functions">Core functions</h2>
 <p>The package provides a small set of opinionated functions that wrap
 around existing APIs and packages:</p>
 <ul>
-<li><p><strong><code>load_stock_timeseries()</code></strong> Retrieve
-<strong>daily OHLCV</strong> stock data from Yahoo Finance, or
-<strong>intraday OHLCV</strong> data from Tiingo. Handles chunked
-queries, split adjustment, and returns results together with failed
-queries.</p></li>
-<li><p><strong><code>load_crypto_timeseries()</code></strong> Retrieve
-OHLCV data for crypto pairs (e.g. <code>&quot;ETHUSDT&quot;</code>) from
-<strong>Binance</strong>. Supports multiple intervals and query
-chunking.</p></li>
-<li><p><strong><code>load_yahoo_dividends()</code></strong> Retrieve
-<strong>dividend payments</strong> for one or more tickers from Yahoo
-Finance. Returns both successfully retrieved dividends and a log of any
-failed symbols.</p></li>
+<li><p><strong><code>load_stock_timeseries()</code></strong><br />
+Retrieve <strong>daily OHLCV</strong> stock data from Yahoo Finance, or
+<strong>intraday OHLCV</strong> data from Tiingo.<br />
+Handles chunked queries, split adjustment, and returns results together
+with failed queries.</p></li>
+<li><p><strong><code>load_crypto_timeseries()</code></strong><br />
+Retrieve OHLCV data for crypto pairs (e.g. <code>&quot;ETHUSDT&quot;</code>) from
+<strong>Binance</strong>.<br />
+Supports multiple intervals and query chunking.</p></li>
+<li><p><strong><code>load_yahoo_dividends()</code></strong><br />
+Retrieve <strong>dividend payments</strong> for one or more tickers from
+Yahoo Finance.<br />
+Returns both successfully retrieved dividends and a log of any failed
+symbols.</p></li>
 </ul>
-<p>All functions return a <strong>list</strong> with two slots:</p>
+<p>All functions return a <strong>list</strong> with two slots: -
+<code>data</code>: tibble with the requested time series or
+dividends.</p>
 <ul>
-<li><code>data</code>: tibble with the requested time series or
-dividends.</li>
 <li><code>errors</code>: tibble with failed queries, or
 <code>NULL</code> if no errors occurred.</li>
 </ul>
 <p>This makes it easy to both use the data and inspect problems without
 interrupting workflows.</p>
+<h2 id="how-does-it-compare-to-other-packages">How does it compare to
+other packages?</h2>
+<p>Several R packages already provide access to financial data:</p>
+<ul>
+<li><p><strong><code>tidyquant::tq_get()</code></strong><br />
+Flexible and general-purpose. Supports Yahoo, Tiingo, Alpha Vantage, and
+more.<br />
+<em>Difference</em>: <code>invest.funks</code> builds on
+<code>tq_get()</code> but adds <strong>query chunking</strong>,
+<strong>error logging</strong>, and <strong>consistent output
+structures</strong> (<code>data</code> + <code>errors</code>).</p></li>
+<li><p><strong><code>quantmod::getSymbols()</code></strong><br />
+One of the oldest tools for financial data in R. Primarily designed for
+<strong>xts/zoo</strong> workflows.<br />
+<em>Difference</em>: <code>invest.funks</code> returns
+<strong>tibbles</strong>, integrates with the tidyverse, and provides
+<strong>crypto support</strong>.</p></li>
+<li><p><strong><code>riingo</code></strong><br />
+Official Tiingo client. Useful for low-level Tiingo queries.<br />
+<em>Difference</em>: <code>invest.funks</code> abstracts over multiple
+providers (Yahoo, Tiingo, Binance) with the <strong>same
+interface</strong> and adds error handling.</p></li>
+<li><p><strong><code>BatchGetSymbols</code></strong><br />
+Convenient batch retrieval of daily Yahoo Finance data.<br />
+<em>Difference</em>: <code>invest.funks</code> is more general (intraday
++ crypto + dividends) and maintains the same return structure across all
+data types.</p></li>
+</ul>
+<p>In short, <code>invest.funks</code> focuses less on being a
+full-featured API client, and more on being a <strong>unified, resilient
+interface</strong> for fetching stock, crypto, and dividend data with
+minimal friction.</p>
 <h2 id="example">Example</h2>
 <p>Load Apple’s daily prices from Yahoo Finance:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(invest.funks)</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>stock_test <span class="ot">&lt;-</span> <span class="fu">load_stock_timeseries</span>(</span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>  <span class="at">symbol     =</span> <span class="st">&quot;AAPL&quot;</span>,</span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>  <span class="at">interval   =</span> <span class="st">&quot;1d&quot;</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>  <span class="at">start_date =</span> <span class="st">&quot;2021-10-01&quot;</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>  <span class="at">end_date   =</span> <span class="st">&quot;2022-02-01&quot;</span></span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>)</span>
-<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a></span>
-<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="fu">head</span>(stock_test<span class="sc">$</span>data)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">library</span>(invest.funks)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>stock_test <span class="ot">&lt;-</span> <span class="fu">load_stock_timeseries</span>(</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">symbol     =</span> <span class="st">&quot;AAPL&quot;</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="at">interval   =</span> <span class="st">&quot;1d&quot;</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  <span class="at">start_date =</span> <span class="st">&quot;2021-10-01&quot;</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>  <span class="at">end_date   =</span> <span class="st">&quot;2022-02-01&quot;</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>)</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="fu">head</span>(stock_test<span class="sc">$</span>data)</span></code></pre></div>
 <p>Load hourly intraday data (Tiingo):</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>stock_test_hour <span class="ot">&lt;-</span> <span class="fu">load_stock_timeseries</span>(</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>  <span class="at">symbol     =</span> <span class="st">&quot;AAPL&quot;</span>,</span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>  <span class="at">interval   =</span> <span class="st">&quot;1h&quot;</span>,</span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="at">start_date =</span> <span class="st">&quot;2021-10-01&quot;</span>,</span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>  <span class="at">end_date   =</span> <span class="st">&quot;2021-10-02&quot;</span></span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>)</span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a></span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="fu">head</span>(stock_test_hour<span class="sc">$</span>data)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>stock_test_hour <span class="ot">&lt;-</span> <span class="fu">load_stock_timeseries</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="at">symbol     =</span> <span class="st">&quot;AAPL&quot;</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="at">interval   =</span> <span class="st">&quot;1h&quot;</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="at">start_date =</span> <span class="st">&quot;2021-10-01&quot;</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="at">end_date   =</span> <span class="st">&quot;2021-10-02&quot;</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="fu">head</span>(stock_test_hour<span class="sc">$</span>data)</span></code></pre></div>
 <p>Load crypto OHLCV from Binance:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>crypto_test <span class="ot">&lt;-</span> <span class="fu">load_crypto_timeseries</span>(</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="at">pair       =</span> <span class="st">&quot;ETHUSDT&quot;</span>,</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="at">interval   =</span> <span class="st">&quot;1m&quot;</span>,</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">start_date =</span> <span class="st">&quot;2021-01-01&quot;</span>,</span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">end_date   =</span> <span class="st">&quot;2021-01-02&quot;</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>)</span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="fu">head</span>(crypto_test<span class="sc">$</span>data)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>crypto_test <span class="ot">&lt;-</span> <span class="fu">load_crypto_timeseries</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="at">pair       =</span> <span class="st">&quot;ETHUSDT&quot;</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="at">interval   =</span> <span class="st">&quot;1m&quot;</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">start_date =</span> <span class="st">&quot;2021-01-01&quot;</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="at">end_date   =</span> <span class="st">&quot;2021-01-02&quot;</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>)</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="fu">head</span>(crypto_test<span class="sc">$</span>data)</span></code></pre></div>
 <p>Load dividends from Yahoo Finance:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>dividends <span class="ot">&lt;-</span> <span class="fu">load_yahoo_dividends</span>(</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="at">symbols    =</span> <span class="fu">c</span>(<span class="st">&quot;AAPL&quot;</span>, <span class="st">&quot;MSFT&quot;</span>),</span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">start_date =</span> <span class="st">&quot;2020-01-01&quot;</span>,</span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">end_date   =</span> <span class="st">&quot;2022-01-01&quot;</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>)</span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="fu">head</span>(dividends<span class="sc">$</span>data)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>dividends <span class="ot">&lt;-</span> <span class="fu">load_yahoo_dividends</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="at">symbols    =</span> <span class="fu">c</span>(<span class="st">&quot;AAPL&quot;</span>, <span class="st">&quot;MSFT&quot;</span>),</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="at">start_date =</span> <span class="st">&quot;2020-01-01&quot;</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="at">end_date   =</span> <span class="st">&quot;2022-01-01&quot;</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="fu">head</span>(dividends<span class="sc">$</span>data)</span></code></pre></div>
 
 </body>
 </html>

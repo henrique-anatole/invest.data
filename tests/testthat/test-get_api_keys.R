@@ -1,10 +1,10 @@
 # tests functions created with support from ChatGPT
-test_that("direct input sets and retrieves key", {
+test_that("tiingo: direct input sets and retrieves key", {
   # save user’s real key if any
-  old_key <- getOption("tiingo_key")  
-  # clear any existing option or environmental key         
+  old_key <- getOption("tiingo_key")
+  # clear any existing option or environmental key
   options(tiingo_key = NULL)
-  Sys.unsetenv("TIINGO_KEY")     
+  Sys.unsetenv("TIINGO_KEY")
   # restore after test
   on.exit({
     options(tiingo_key = old_key)
@@ -14,17 +14,20 @@ test_that("direct input sets and retrieves key", {
   # ensure option is unset
   set_tiingo_api_key("FAKEKEY123")
   expect_equal(getOption("tiingo_key"), "FAKEKEY123")
-  
+
   # returns invisibly
-  expect_equal(invisible(set_tiingo_api_key("NEWKEY", overwrite = TRUE)), "NEWKEY")
+  expect_equal(
+    invisible(set_tiingo_api_key("NEWKEY", overwrite = TRUE)),
+    "NEWKEY"
+  )
 })
 
-test_that("options() key is respected unless overwrite = TRUE", {
+test_that("tiingo: options() key is respected unless overwrite = TRUE", {
   # save user’s real key if any
-  old_key <- getOption("tiingo_key")  
-  # clear any existing option or environmental key         
+  old_key <- getOption("tiingo_key")
+  # clear any existing option or environmental key
   options(tiingo_key = NULL)
-  Sys.unsetenv("TIINGO_KEY")     
+  Sys.unsetenv("TIINGO_KEY")
   # restore after test
   on.exit({
     options(tiingo_key = old_key)
@@ -43,12 +46,12 @@ test_that("options() key is respected unless overwrite = TRUE", {
   expect_equal(getOption("tiingo_key"), "OVERWRITEKEY")
 })
 
-test_that("environment variable is used when no option or direct key", {
+test_that("tiingo: environment variable is used when no option or direct key", {
   # save user’s real key if any
-  old_key <- getOption("tiingo_key")  
-  # clear any existing option or environmental key         
+  old_key <- getOption("tiingo_key")
+  # clear any existing option or environmental key
   options(tiingo_key = NULL)
-  Sys.unsetenv("TIINGO_KEY")     
+  Sys.unsetenv("TIINGO_KEY")
   # restore after test
   on.exit({
     options(tiingo_key = old_key)
@@ -61,12 +64,12 @@ test_that("environment variable is used when no option or direct key", {
   expect_equal(getOption("tiingo_key"), "ENVKEY")
 })
 
-test_that("keyring is used if available and no option/env key", {
+test_that("tiingo: keyring is used if available and no option/env key", {
   # save user’s real key if any
-  old_key <- getOption("tiingo_key")  
-  # clear any existing option or environmental key         
+  old_key <- getOption("tiingo_key")
+  # clear any existing option or environmental key
   options(tiingo_key = NULL)
-  Sys.unsetenv("TIINGO_KEY")     
+  Sys.unsetenv("TIINGO_KEY")
   # restore after test
   on.exit({
     options(tiingo_key = old_key)
@@ -84,12 +87,12 @@ test_that("keyring is used if available and no option/env key", {
   )
 })
 
-test_that("error is thrown if no key found anywhere", {
+test_that("tiingo: error is thrown if no key found anywhere", {
   # save user’s real key if any
-  old_key <- getOption("tiingo_key")  
-  # clear any existing option or environmental key         
+  old_key <- getOption("tiingo_key")
+  # clear any existing option or environmental key
   options(tiingo_key = NULL)
-  Sys.unsetenv("TIINGO_KEY")     
+  Sys.unsetenv("TIINGO_KEY")
   # restore after test
   on.exit({
     options(tiingo_key = old_key)
@@ -97,35 +100,45 @@ test_that("error is thrown if no key found anywhere", {
   })
 
   if (requireNamespace("keyring", quietly = TRUE)) {
-    with_mocked_bindings({
+    with_mocked_bindings(
+      {
         expect_error(set_tiingo_api_key(), "No valid Tiingo API key")
       },
       .package = "keyring",
-       key_get = function(...) stop("no key found")
+      key_get = function(...) stop("no key found")
     )
   } else {
     expect_error(set_tiingo_api_key(), "No valid Tiingo API key")
   }
 })
 
-test_that("invalid key input raises error", {
+test_that("tiingo: invalid key input raises error", {
   # check for non-character input and length > 1
-  expect_error(set_tiingo_api_key(1234, overwrite = TRUE), "tiingo_key must be a single character string")
-  expect_error(set_tiingo_api_key(c("A", "B"), overwrite = TRUE), "tiingo_key must be a single character string")
+  expect_error(
+    set_tiingo_api_key(1234, overwrite = TRUE),
+    "tiingo_key must be a single character string"
+  )
+  expect_error(
+    set_tiingo_api_key(c("A", "B"), overwrite = TRUE),
+    "tiingo_key must be a single character string"
+  )
 })
 
-test_that("direct input sets and retrieves keys", {
+test_that("binance: direct input sets and retrieves keys", {
+  # save user’s real keys if any
   old_key <- getOption("bin_key")
   old_secret <- getOption("bin_secret")
+  # clear any existing option or environmental keys
   options(bin_key = NULL)
   options(bin_secret = NULL)
+  # restore after test
   on.exit({
     options(bin_key = old_key)
     options(bin_secret = old_secret)
     Sys.unsetenv("BIN_KEY")
     Sys.unsetenv("BIN_SECRET")
   })
-
+  # ensure options are unset
   res <- set_binance_api_key("FAKEKEY", "FAKESECRET")
   expect_equal(getOption("bin_key"), "FAKEKEY")
   expect_equal(getOption("bin_secret"), "FAKESECRET")
@@ -133,10 +146,20 @@ test_that("direct input sets and retrieves keys", {
   expect_equal(res$secret, "FAKESECRET")
 })
 
-test_that("options() keys are respected unless overwrite = TRUE", {
+test_that("binance: options() keys are respected unless overwrite = TRUE", {
+  # save user’s real keys if any
+  old_key <- getOption("bin_key")
+  old_secret <- getOption("bin_secret")
+  # clear any existing option or environmental keys
   options(bin_key = "OPTIONKEY")
   options(bin_secret = "OPTIONSECRET")
-  
+  # restore after test
+  on.exit({
+    options(bin_key = old_key)
+    options(bin_secret = old_secret)
+    Sys.unsetenv("BIN_KEY")
+    Sys.unsetenv("BIN_SECRET")
+  })
   set_binance_api_key()
   expect_equal(getOption("bin_key"), "OPTIONKEY")
   expect_equal(getOption("bin_secret"), "OPTIONSECRET")
@@ -146,28 +169,110 @@ test_that("options() keys are respected unless overwrite = TRUE", {
   expect_equal(getOption("bin_secret"), "NEWSECRET")
 })
 
-test_that("environment variables are used when no option or direct keys", {
+test_that("binance: environment variables are used when no option or direct keys", {
+  # save user’s real keys if any
+  old_key <- getOption("bin_key")
+  old_secret <- getOption("bin_secret")
+  # clear any existing option or environmental keys
   options(bin_key = NULL)
   options(bin_secret = NULL)
   Sys.setenv(BIN_KEY = "ENVKEY", BIN_SECRET = "ENVSECRET")
+  # restore after test
+  on.exit({
+    options(bin_key = old_key)
+    options(bin_secret = old_secret)
+    Sys.unsetenv("BIN_KEY")
+    Sys.unsetenv("BIN_SECRET")
+  })
 
   set_binance_api_key()
   expect_equal(getOption("bin_key"), "ENVKEY")
   expect_equal(getOption("bin_secret"), "ENVSECRET")
 })
 
-test_that("invalid key input raises error", {
-  expect_error(set_binance_api_key(1234, "SECRET", overwrite = TRUE), "bin_key must be a single character string")
-  expect_error(set_binance_api_key("KEY", 1234, overwrite = TRUE), "bin_secret must be a single character string")
-  expect_error(set_binance_api_key(c("A","B"), "SECRET", overwrite = TRUE), "bin_key must be a single character string")
-  expect_error(set_binance_api_key("KEY", c("X","Y"), overwrite = TRUE), "bin_secret must be a single character string")
+test_that("binance: keyring is used if available and no option/env keys", {
+  # save user’s real keys if any
+  old_key <- getOption("bin_key")
+  old_secret <- getOption("bin_secret")
+  # clear any existing option or environmental keys
+  options(bin_key = NULL)
+  options(bin_secret = NULL)
+  Sys.unsetenv("BIN_KEY")
+  Sys.unsetenv("BIN_SECRET")
+  # restore after test
+  on.exit({
+    options(bin_key = old_key)
+    options(bin_secret = old_secret)
+    Sys.unsetenv("BIN_KEY")
+    Sys.unsetenv("BIN_SECRET")
+  })
+  with_mocked_bindings(
+    {
+      set_binance_api_key()
+      expect_equal(getOption("bin_key"), "KEYRINGKEY")
+      expect_equal(getOption("bin_secret"), "KEYRINGSECRET")
+    },
+    .package = "keyring",
+    key_get = function(name, ...) {
+      if (name == "binance_key") {
+        return("KEYRINGKEY")
+      } else if (name == "binance_secret") {
+        return("KEYRINGSECRET")
+      }
+      stop("Unknown key")
+    }
+  )
 })
 
-test_that("error is thrown if no key found anywhere", {
+test_that("binance: invalid key input raises error", {
+  expect_error(
+    set_binance_api_key(1234, "SECRET", overwrite = TRUE),
+    "bin_key must be a single character string"
+  )
+  expect_error(
+    set_binance_api_key("KEY", 1234, overwrite = TRUE),
+    "bin_secret must be a single character string"
+  )
+  expect_error(
+    set_binance_api_key(c("A", "B"), "SECRET", overwrite = TRUE),
+    "bin_key must be a single character string"
+  )
+  expect_error(
+    set_binance_api_key("KEY", c("X", "Y"), overwrite = TRUE),
+    "bin_secret must be a single character string"
+  )
+})
+
+test_that("binance: error is thrown if no key found anywhere", {
+  old_key <- getOption("bin_key")
+  old_secret <- getOption("bin_secret")
+  on.exit({
+    options(bin_key = old_key)
+    options(bin_secret = old_secret)
+    Sys.unsetenv("BIN_KEY")
+    Sys.unsetenv("BIN_SECRET")
+  })
+
   options(bin_key = NULL)
   options(bin_secret = NULL)
   Sys.unsetenv("BIN_KEY")
   Sys.unsetenv("BIN_SECRET")
 
-  expect_error(set_binance_api_key(), "No valid Binance API key and secret found")
+  if (requireNamespace("keyring", quietly = TRUE)) {
+    with_mocked_bindings(
+      {
+        expect_error(
+          set_binance_api_key(),
+          "No valid Binance API key and secret found"
+        )
+      },
+      .package = "keyring",
+      key_get = function(...) stop("no key found")
+    )
+  } else {
+    expect_error(
+      set_binance_api_key(),
+      "No valid Binance API key and secret found"
+    )
+  }
 })
