@@ -17,13 +17,135 @@ helpers (e.g. split adjustment).
 
 ------------------------------------------------------------------------
 
+## Core functions
+
+The package provides a small set of opinionated functions that wrap
+around existing APIs and packages:
+
+- **`load_stock_timeseries()`**  
+  Retrieve **daily OHLCV** stock data from Yahoo Finance, or **intraday
+  OHLCV** data from Tiingo.  
+  Handles chunked queries, split adjustment, and returns results
+  together with failed queries.
+
+- **`load_crypto_timeseries()`**  
+  Retrieve OHLCV data for crypto pairs (e.g. `"ETHUSDT"`) from
+  **Binance**.  
+  Supports multiple intervals and query chunking.
+
+- **`load_yahoo_dividends()`**  
+  Retrieve **dividend payments** for one or more tickers from Yahoo
+  Finance.  
+  Returns both successfully retrieved dividends and a log of any failed
+  symbols.
+
+All functions return a **list** with two slots: - `data`: tibble with
+the requested time series or dividends.  
+- `errors`: tibble with failed queries, or `NULL` if no errors occurred.
+
+This makes it easy to both use the data and inspect problems without
+interrupting workflows.
+
+## How does it compare to other packages?
+
+Several R packages already provide access to financial data:
+
+- **`tidyquant::tq_get()`**  
+  Flexible and general-purpose. Supports Yahoo, Tiingo, Alpha Vantage,
+  and more.  
+  *Difference*: `invest.funks` builds on `tq_get()` but adds **query
+  chunking**, **error logging**, and **consistent output structures**
+  (`data` + `errors`).
+
+- **`quantmod::getSymbols()`**  
+  One of the oldest tools for financial data in R. Primarily designed
+  for **xts/zoo** workflows.  
+  *Difference*: `invest.funks` returns **tibbles**, integrates with the
+  tidyverse, and provides **crypto support**.
+
+- **`riingo`**  
+  Official Tiingo client. Useful for low-level Tiingo queries.  
+  *Difference*: `invest.funks` abstracts over multiple providers (Yahoo,
+  Tiingo, Binance) with the **same interface** and adds error handling.
+
+- **`BatchGetSymbols`**  
+  Convenient batch retrieval of daily Yahoo Finance data.  
+  *Difference*: `invest.funks` is more general (intraday + crypto +
+  dividends) and maintains the same return structure across all data
+  types.
+
+In short, `invest.funks` focuses less on being a full-featured API
+client, and more on being a **unified, resilient interface** for
+fetching stock, crypto, and dividend data with minimal friction.
+
+## Example
+
+Load Apple’s daily prices from Yahoo Finance:
+
+``` r
+library(invest.funks)
+
+stock_test <- load_stock_timeseries(
+  symbol     = c("AAPL", "MSFT", "INVALID"),  # includes an invalid symbol to demonstrate error logging
+  interval   = "1d",
+  start_date = "2021-10-01",
+  end_date   = "2022-02-01"
+)
+
+head(stock_test$data)
+head(stock_test$errors)
+```
+
+Load hourly intraday data (Tiingo):
+
+``` r
+stock_test_hour <- load_stock_timeseries(
+  symbol     = c("AAPL", "MSFT", "INVALID"),  # includes an invalid symbol to demonstrate error logging
+  interval   = "1h",
+  start_date = "2021-10-01",
+  end_date   = "2021-10-02"
+)
+
+head(stock_test_hour$data)
+head(stock_test_hour$errors)
+```
+
+Load crypto OHLCV from Binance:
+
+``` r
+crypto_test <- load_crypto_timeseries(
+  pair       = c("ETHUSDT", "BTCUSDT", "INVALID"),  # includes an invalid pair to demonstrate error logging
+  interval   = "1m",
+  start_date = "2021-01-01",
+  end_date   = "2021-01-02"
+)
+
+head(crypto_test$data)
+head(crypto_test$errors)
+```
+
+Load dividends from Yahoo Finance:
+
+``` r
+dividends <- load_yahoo_dividends(
+  symbols    = c("AAPL", "MSFT", "INVALID"),  # includes an invalid symbol to demonstrate error logging
+  start_date = "2020-01-01",
+  end_date   = "2022-01-01"
+)
+
+head(dividends$data)
+head(dividends$errors)
+```
+
+------------------------------------------------------------------------
+
 ## Installation
 
 You can install the development version of **yourpackage** from GitHub:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("youruser/yourpackage")
+remotes::install_github("henrique-anatole/invest.funks")
 ```
 
 ------------------------------------------------------------------------
@@ -96,121 +218,3 @@ set_binance_api_key()
 or servers where keyring is unavailable.  
 🚫 Avoid hardcoding keys in scripts that may be shared or
 version-controlled.
-
-------------------------------------------------------------------------
-
-## Core functions
-
-The package provides a small set of opinionated functions that wrap
-around existing APIs and packages:
-
-- **`load_stock_timeseries()`**  
-  Retrieve **daily OHLCV** stock data from Yahoo Finance, or **intraday
-  OHLCV** data from Tiingo.  
-  Handles chunked queries, split adjustment, and returns results
-  together with failed queries.
-
-- **`load_crypto_timeseries()`**  
-  Retrieve OHLCV data for crypto pairs (e.g. `"ETHUSDT"`) from
-  **Binance**.  
-  Supports multiple intervals and query chunking.
-
-- **`load_yahoo_dividends()`**  
-  Retrieve **dividend payments** for one or more tickers from Yahoo
-  Finance.  
-  Returns both successfully retrieved dividends and a log of any failed
-  symbols.
-
-All functions return a **list** with two slots: - `data`: tibble with
-the requested time series or dividends.  
-- `errors`: tibble with failed queries, or `NULL` if no errors occurred.
-
-This makes it easy to both use the data and inspect problems without
-interrupting workflows.
-
-## How does it compare to other packages?
-
-Several R packages already provide access to financial data:
-
-- **`tidyquant::tq_get()`**  
-  Flexible and general-purpose. Supports Yahoo, Tiingo, Alpha Vantage,
-  and more.  
-  *Difference*: `invest.funks` builds on `tq_get()` but adds **query
-  chunking**, **error logging**, and **consistent output structures**
-  (`data` + `errors`).
-
-- **`quantmod::getSymbols()`**  
-  One of the oldest tools for financial data in R. Primarily designed
-  for **xts/zoo** workflows.  
-  *Difference*: `invest.funks` returns **tibbles**, integrates with the
-  tidyverse, and provides **crypto support**.
-
-- **`riingo`**  
-  Official Tiingo client. Useful for low-level Tiingo queries.  
-  *Difference*: `invest.funks` abstracts over multiple providers (Yahoo,
-  Tiingo, Binance) with the **same interface** and adds error handling.
-
-- **`BatchGetSymbols`**  
-  Convenient batch retrieval of daily Yahoo Finance data.  
-  *Difference*: `invest.funks` is more general (intraday + crypto +
-  dividends) and maintains the same return structure across all data
-  types.
-
-In short, `invest.funks` focuses less on being a full-featured API
-client, and more on being a **unified, resilient interface** for
-fetching stock, crypto, and dividend data with minimal friction.
-
-## Example
-
-Load Apple’s daily prices from Yahoo Finance:
-
-``` r
-library(invest.funks)
-
-stock_test <- load_stock_timeseries(
-  symbol     = "AAPL",
-  interval   = "1d",
-  start_date = "2021-10-01",
-  end_date   = "2022-02-01"
-)
-
-head(stock_test$data)
-```
-
-Load hourly intraday data (Tiingo):
-
-``` r
-stock_test_hour <- load_stock_timeseries(
-  symbol     = "AAPL",
-  interval   = "1h",
-  start_date = "2021-10-01",
-  end_date   = "2021-10-02"
-)
-
-head(stock_test_hour$data)
-```
-
-Load crypto OHLCV from Binance:
-
-``` r
-crypto_test <- load_crypto_timeseries(
-  pair       = "ETHUSDT",
-  interval   = "1m",
-  start_date = "2021-01-01",
-  end_date   = "2021-01-02"
-)
-
-head(crypto_test$data)
-```
-
-Load dividends from Yahoo Finance:
-
-``` r
-dividends <- load_yahoo_dividends(
-  symbols    = c("AAPL", "MSFT"),
-  start_date = "2020-01-01",
-  end_date   = "2022-01-01"
-)
-
-head(dividends$data)
-```
