@@ -52,6 +52,6 @@ end_date="2022-02-01")
 stock_test_hour = load_stock_timeseries(symbol = "AAPL",
 interval="1h",
 start_date="2021-10-01",
-end_date="2022-02-01")
+end_date="2021-11-01")
 
 }

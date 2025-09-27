@@ -11,9 +11,9 @@
 fetch and prepare financial time series data from **Yahoo Finance,
 Tiingo, and Binance**.
 
-It is designed to be used by other projects in the same ecosystem,
-offering consistent data structures, error tracking, and preprocessing
-helpers (e.g. split adjustment).
+It is designed to be used by other domestic projects, offering
+consistent data structures, error tracking, and preprocessing helpers
+(e.g. split adjustment).
 
 ------------------------------------------------------------------------
 
@@ -80,7 +80,7 @@ fetching stock, crypto, and dividend data with minimal friction.
 
 ## Example
 
-Load Apple’s daily prices from Yahoo Finance:
+Load daily prices from Yahoo Finance:
 
 ``` r
 library(invest.funks)

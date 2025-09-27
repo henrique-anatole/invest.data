@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 
 `invest.funks` is a lightweight R package that provides wrappers to fetch and prepare financial time series data from **Yahoo Finance, Tiingo, and Binance**.
 
-It is designed to be used by other projects in the same ecosystem, offering consistent data structures, error tracking, and preprocessing helpers (e.g. split adjustment).
+It is designed to be used by other domestic projects, offering consistent data structures, error tracking, and preprocessing helpers (e.g. split adjustment).
 
 ---
 
@@ -72,7 +72,7 @@ In short, `invest.funks` focuses less on being a full-featured API client, and m
 
 ## Example
 
-Load Apple’s daily prices from Yahoo Finance:
+Load daily prices from Yahoo Finance:
 
 ```{r example-stock, eval = FALSE}
 library(invest.funks)

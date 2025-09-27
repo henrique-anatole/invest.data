@@ -7,9 +7,15 @@
 set_binance_api_key(bin_key = NULL, bin_secret = NULL, overwrite = FALSE)
 }
 \arguments{
-\item{bin_key}{Optional. A character string with your Binance API Key.}
+\item{bin_key}{Optional. A character string with your Binance API Key.
+If not provided, the function will first look in \code{options("bin_key")},
+then in the system environment variable \code{BIN_KEY},
+and finally attempt to retrieve it from the keyring.}
 
-\item{bin_secret}{Optional. A character string with your Binance API Secret.}
+\item{bin_secret}{Optional. A character string with your Binance API Secret.
+If not provided, the function will first look in \code{options("bin_secret")},
+then in the system environment variable \code{BIN_SECRET},
+and finally attempt to retrieve it from the keyring.}
 
 \item{overwrite}{Logical, default = FALSE. Whether to overwrite keys already set in options().}
 }
@@ -27,11 +33,17 @@ Order of precedence for retrieving keys:
 \item Direct input via \code{bin_key} / \code{bin_secret}
 \item Already set in \code{options("bin_key")} / \code{options("bin_secret")}
 \item Environment variables \code{BIN_KEY} / \code{BIN_SECRET}
-\item (Optional) keyring retrieval could be added similarly
+\item Securely stored in the system keyring under \code{"binance_key"} and \code{"binance_secret"}
 }
 }
 \examples{
 \dontrun{
+# Direct input
 set_binance_api_key("YOUR_API_KEY", "YOUR_API_SECRET")
+
+# Or if previously stored securely with:
+# keyring::key_set("binance_key")
+# keyring::key_set("binance_secret")
+set_binance_api_key()
 }
 }
