@@ -2,12 +2,12 @@
 % Please edit documentation in R/load_timeseries.R
 \name{load_yahoo_dividends}
 \alias{load_yahoo_dividends}
-\title{load_yahoo_dividends ############}
+\title{load_yahoo_dividends}
 \usage{
 load_yahoo_dividends(symbols, start_date, end_date = as.character(Sys.Date()))
 }
 \arguments{
-\item{symbols}{Character vector. Stock ticker(s) to retrieve dividends for.}
+\item{symbols}{Character vector. Stock ticker to retrieve dividends for.}
 
 \item{start_date}{Character. Start date in "YYYY-MM-DD".}
 
@@ -21,7 +21,7 @@ A list with:
 }
 }
 \description{
-Load dividends from Yahoo Finance using tidyquant.
+Load dividends data from Yahoo Finance using \code{\link[tidyquant:tq_get]{tidyquant::tq_get()}} and wrap around to handle errors.
 }
 \examples{
 dividends <- load_yahoo_dividends(

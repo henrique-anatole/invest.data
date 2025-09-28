@@ -19,8 +19,8 @@ Imports:
     riingo,
     purrr,
     binancer,
-    tibble
-Suggests: 
-    testthat (>= 3.0.0),
+    tibble,
     keyring
+Suggests: 
+    testthat (>= 3.0.0)
 Config/testthat/edition: 3

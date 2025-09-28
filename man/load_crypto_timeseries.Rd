@@ -2,7 +2,7 @@
 % Please edit documentation in R/load_timeseries.R
 \name{load_crypto_timeseries}
 \alias{load_crypto_timeseries}
-\title{load_crypto_timeseries ############}
+\title{Download crypto price data from exchanges}
 \usage{
 load_crypto_timeseries(
   pair,
@@ -35,7 +35,10 @@ A list with:
 }
 }
 \description{
-Load crypto timeseries from Binance.
+This function retrieves historical OHLCV (Open, High, Low, Close, Volume) data
+for specified cryptocurrency pairs from exchanges.
+Currently, only Binance is supported as a source and it uses \code{\link[binancer:binance_klines]{binancer::binance_klines()}}
+to fetch the data and wraps around to handle chunking and errors.
 }
 \examples{
 # Load 1 minute time series for ETHUSDT

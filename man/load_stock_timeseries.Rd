@@ -2,10 +2,10 @@
 % Please edit documentation in R/load_timeseries.R
 \name{load_stock_timeseries}
 \alias{load_stock_timeseries}
-\title{load_stock_timeseries ############}
+\title{Download stock price data from Yahoo Finance or Tiingo}
 \usage{
 load_stock_timeseries(
-  symbol,
+  symbols,
   interval,
   chunk_size = NULL,
   start_date,
@@ -14,7 +14,7 @@ load_stock_timeseries(
 )
 }
 \arguments{
-\item{symbol}{Character vector. Stock ticker(s).}
+\item{symbols}{Character vector, accept multiple. Stock tickers.}
 
 \item{interval}{Character. One of '1m','3m','5m','15m','30m',
 '1h','2h','4h','6h','8h','12h','1d'.}
@@ -35,23 +35,25 @@ A list with:
 }
 }
 \description{
-Load stock timeseries from Yahoo Finance (daily) or Tiingo (intraday).
+Load stock timeseries from Yahoo Finance (daily) or Tiingo (intraday)
+using \code{\link[tidyquant:tq_get]{tidyquant::tq_get()}} and wrap around to handle chunking,
+errors, and split adjustments.
 }
 \examples{
 # Load daily time series for AAPL from 2021-10-01 to 2022-02-01
-stock_test_day = load_stock_timeseries(symbol = "AAPL",
-interval="1d",
-start_date="2021-10-01",
-end_date="2022-02-01")
+stock_test_day = load_stock_timeseries(symbols = "AAPL",
+   interval="1d",
+   start_date="2021-10-01",
+   end_date="2022-02-01")
 # Load daily time series for AAPL and MSFT from 2021-10-01 to 2022-02-01
-stock_test_multi = load_stock_timeseries(symbol = c("AAPL", "MSFT"),
-interval="1d",
-start_date="2021-10-01",
-end_date="2022-02-01")
+stock_test_multi = load_stock_timeseries(symbols = c("AAPL", "MSFT"),
+   interval="1d",
+   start_date="2021-10-01",
+   end_date="2022-02-01")
 # # Load hourly time series for AAPL from 2021-10-01 to 2022-02-01
-stock_test_hour = load_stock_timeseries(symbol = "AAPL",
-interval="1h",
-start_date="2021-10-01",
-end_date="2021-11-01")
+stock_test_hour = load_stock_timeseries(symbols = "AAPL",
+   interval="1h",
+   start_date="2021-10-01",
+   end_date="2021-11-01")
 
 }

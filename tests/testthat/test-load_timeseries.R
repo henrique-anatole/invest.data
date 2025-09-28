@@ -102,7 +102,7 @@ test_that("stock: hourly returns correct shape", {
   skip_if(getOption('tiingo_key') == "", "No API key available")
 
   apple <- load_stock_timeseries(
-    symbol = "AAPL",
+    symbols = "AAPL",
     interval = "1h",
     start_date = "2021-10-01",
     end_date = "2021-10-10"
@@ -749,6 +749,24 @@ test_that("adjust_for_splits handles edge case - data on split date", {
   expect_equal(result$open[1], 100 * 0.25, tolerance = 1e-10)
 })
 
+test_that("determine_adjustment_factor: throws error correctly", {
+  suppressWarnings(
+    # Mock tidyquant to return empty splits data
+    with_mocked_bindings(
+      determine_adjustment_factor = function(...) {
+        stop("determine_adjustment_factor error")
+      },
+      {
+        data <- create_test_ohlcv("AAPL", c("2020-01-01", "2023-01-01"), 100)
+        expect_error(
+          adjust_for_splits(data, symbols = "AAPL", splits_data = test_splits),
+          regexp = "Error adjusting for splits"
+        )
+      }
+    )
+  )
+})
+
 
 test_that("make_query_chunks returns one chunk if range fits in one step", {
   res <- make_query_chunks(
@@ -973,10 +991,10 @@ test_that("stock: tiingo path handles unsupported symbols in error message parsi
     {
       suppressWarnings(
         res <- load_stock_timeseries(
-          "BADSYMBOL",
-          "1h",
-          start_date = "2021-01-01",
-          end_date = "2021-01-02"
+          symbols = "BADSYMBOL",
+          interval = "1h",
+          start_date = "2021-02-01",
+          end_date = "2021-02-10"
         )
       )
       expect_true(!is.null(res$errors))

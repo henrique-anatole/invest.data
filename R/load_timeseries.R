@@ -1,6 +1,10 @@
-#' load_crypto_timeseries ############
+# load_crypto_timeseries ############
+#' Download crypto price data from exchanges
 #'
-#' Load crypto timeseries from Binance.
+#' This function retrieves historical OHLCV (Open, High, Low, Close, Volume) data
+#'   for specified cryptocurrency pairs from exchanges.
+#'   Currently, only Binance is supported as a source and it uses [binancer::binance_klines()]
+#'   to fetch the data and wraps around to handle chunking and errors.
 #'
 #' @param pair Character vector. Crypto pair(s), e.g. "ETHUSDT".
 #' @param interval Character. One of '1m','3m','5m','15m','30m','1h',
@@ -15,7 +19,7 @@
 #'     \item{data}{Tibble with OHLCV timeseries.}
 #'     \item{errors}{Tibble with failed query ranges or NULL.}
 #'   }
-#' @import dplyr stringr lubridate binancer purrr
+#' @import dplyr stringr lubridate binancer purrr tibble
 #' @export
 #'
 #' @examples
@@ -37,7 +41,7 @@ load_crypto_timeseries <- function(
   if (source != "binance") {
     stop("Currently only 'binance' is supported as source")
   }
-
+  # Validation
   valid_intervals <- c(
     "1m",
     "3m",
@@ -65,30 +69,32 @@ load_crypto_timeseries <- function(
     end_date,
     valid_intervals
   )
-
+  # Clean inputs
+  pair <- trimws(toupper(pair))
+  # Map interval
   seq_interval <- map_interval(interval)
 
   # Run queries for each pair using purrr::map
-  pair_results <- purrr::map(pair, function(p) {
+  pair_results <- purrr::map(pair, function(current_pair) {
     queries <- make_query_chunks(
       seq_interval,
       chunk_size,
       start_date,
       end_date,
-      p
+      current_pair
     )
 
     results_list <- purrr::map(1:nrow(queries), function(i) {
       tryCatch(
         {
-          temp <- binancer::binance_klines(
+          crypto_data <- binancer::binance_klines(
             symbol = queries$symbol[i],
             interval = interval,
             limit = chunk_size,
             start_time = queries$start_date[i],
             end_time = queries$end_date[i]
           )
-          list(data = temp, error = NULL)
+          list(data = crypto_data, error = NULL)
         },
         error = function(e) {
           # Record the invalid symbol in error tibble
@@ -130,11 +136,14 @@ load_crypto_timeseries <- function(
   return(results)
 }
 
-#' load_stock_timeseries ############
+# load_stock_timeseries ############
+#' Download stock price data from Yahoo Finance or Tiingo
 #'
-#' Load stock timeseries from Yahoo Finance (daily) or Tiingo (intraday).
+#' Load stock timeseries from Yahoo Finance (daily) or Tiingo (intraday)
+#'   using [tidyquant::tq_get()] and wrap around to handle chunking,
+#'   errors, and split adjustments.
 #'
-#' @param symbol Character vector. Stock ticker(s).
+#' @param symbols Character vector, accept multiple. Stock tickers.
 #' @param interval Character. One of '1m','3m','5m','15m','30m',
 #'   '1h','2h','4h','6h','8h','12h','1d'.
 #' @param chunk_size Integer. Number of observations per query (max 1000).
@@ -147,27 +156,27 @@ load_crypto_timeseries <- function(
 #'     \item{data}{Tibble with OHLCV timeseries.}
 #'     \item{errors}{Tibble with failed query ranges or NULL.}
 #'   }
-#' @import dplyr tidyquant riingo lubridate stringr zoo purrr
+#' @import dplyr tidyquant riingo lubridate stringr zoo purrr tibble
 #' @export
 #' @examples
 #' # Load daily time series for AAPL from 2021-10-01 to 2022-02-01
-#' stock_test_day = load_stock_timeseries(symbol = "AAPL",
-#' interval="1d",
-#' start_date="2021-10-01",
-#' end_date="2022-02-01")
+#' stock_test_day = load_stock_timeseries(symbols = "AAPL",
+#'    interval="1d",
+#'    start_date="2021-10-01",
+#'    end_date="2022-02-01")
 #' # Load daily time series for AAPL and MSFT from 2021-10-01 to 2022-02-01
-#' stock_test_multi = load_stock_timeseries(symbol = c("AAPL", "MSFT"),
-#' interval="1d",
-#' start_date="2021-10-01",
-#' end_date="2022-02-01")
+#' stock_test_multi = load_stock_timeseries(symbols = c("AAPL", "MSFT"),
+#'    interval="1d",
+#'    start_date="2021-10-01",
+#'    end_date="2022-02-01")
 #' # # Load hourly time series for AAPL from 2021-10-01 to 2022-02-01
-#' stock_test_hour = load_stock_timeseries(symbol = "AAPL",
-#' interval="1h",
-#' start_date="2021-10-01",
-#' end_date="2021-11-01")
+#' stock_test_hour = load_stock_timeseries(symbols = "AAPL",
+#'    interval="1h",
+#'    start_date="2021-10-01",
+#'    end_date="2021-11-01")
 #'
 load_stock_timeseries <- function(
-  symbol,
+  symbols,
   interval,
   chunk_size = NULL,
   start_date,
@@ -176,7 +185,7 @@ load_stock_timeseries <- function(
 ) {
   # Determine chunk size
   if (is.null(chunk_size)) {
-    chunk_size <- case_when(
+    chunk_size <- dplyr::case_when(
       grepl("m|h", interval) ~ 20000, # intraday max for Tiingo
       TRUE ~ 1000 # daily max for Yahoo
     )
@@ -202,7 +211,7 @@ load_stock_timeseries <- function(
   max_chunk_size <- if (grepl("m|h", interval)) 20000 else 1000
 
   validate_inputs(
-    symbol,
+    symbols,
     interval,
     chunk_size,
     max_chunk_size,
@@ -210,6 +219,8 @@ load_stock_timeseries <- function(
     end_date,
     valid_intervals
   )
+  # Clean inputs
+  symbols <- trimws(toupper(symbols))
 
   # Map interval
   seq_interval <- map_interval(interval)
@@ -225,11 +236,13 @@ load_stock_timeseries <- function(
     # Check Tiingo API key
     api <- set_tiingo_api_key()
     tidyquant::tiingo_api_key(api)
+    # Ensure key is cleared after function exits
+    on.exit(options(tiingo_key = NULL))
 
     # Handle unsupported symbols consistently with Yahoo
     bad_syms <- tryCatch(
       {
-        check_tiingo_symbols(symbol)
+        check_tiingo_symbols(symbols)
         character(0) # no bad symbols
       },
       error = function(e) {
@@ -246,7 +259,7 @@ load_stock_timeseries <- function(
       )
       error_records <- dplyr::bind_rows(error_records, bad_queries)
       # remove bad symbols from processing
-      symbol <- setdiff(symbol, bad_syms)
+      symbols <- setdiff(symbols, bad_syms)
     }
 
     message("Remember: Tiingo timeseries are not adjusted for splits/dividends")
@@ -258,25 +271,24 @@ load_stock_timeseries <- function(
     chunk_size,
     start_date,
     end_date,
-    symbol
+    symbols
   )
 
   # Run queries
   results_list <- purrr::map(1:nrow(queries), function(i) {
     tryCatch(
       {
-        temp <- tidyquant::tq_get(
+        price_data <- tidyquant::tq_get(
           x = queries$symbol[i],
           get = source,
           from = queries$start_date[i],
           to = queries$end_date[i],
           resample_frequency = gsub(" ", "", seq_interval)
         )
-        if (is.null(temp) || nrow(temp) == 0) {
-          # warning("No data for ", queries$symbol[i], " in ", queries$start_date[i], " - ", queries$end_date[i])
+        if (is.null(price_data) || nrow(price_data) == 0) {
           return(list(data = NULL, error = queries[i, ]))
         }
-        list(data = temp, error = NULL)
+        list(data = price_data, error = NULL)
       },
       error = function(e) {
         message("Error for ", queries$symbol[i], ": ", e$message)
@@ -299,7 +311,7 @@ load_stock_timeseries <- function(
 
   # Adjust for splits if Tiingo
   if (adjust_splits && tiingo && nrow(all_data) > 0) {
-    all_data <- adjust_for_splits(all_data, symbol)
+    all_data <- adjust_for_splits(all_data, symbols)
   }
 
   # Final formatting
@@ -307,8 +319,6 @@ load_stock_timeseries <- function(
 
   if (!is.null(all_data) && nrow(all_data) > 0) {
     results$data <- all_data %>%
-      # dplyr::mutate(symbol = symbol) %>% # ensure column exists
-      # dplyr::rename(open_time = "date") %>%
       dplyr::relocate(symbol, .after = "volume")
   }
 
@@ -319,11 +329,12 @@ load_stock_timeseries <- function(
   return(results)
 }
 
-#' load_yahoo_dividends ############
+# load_yahoo_dividends ############
+#' load_yahoo_dividends
 #'
-#' Load dividends from Yahoo Finance using tidyquant.
+#' Load dividends data from Yahoo Finance using [tidyquant::tq_get()] and wrap around to handle errors.
 #'
-#' @param symbols Character vector. Stock ticker(s) to retrieve dividends for.
+#' @param symbols Character vector. Stock ticker to retrieve dividends for.
 #' @param start_date Character. Start date in "YYYY-MM-DD".
 #' @param end_date Character. End date in "YYYY-MM-DD". Default is today's date.
 #'
@@ -359,33 +370,32 @@ load_yahoo_dividends <- function(
   if (as.Date(start_date) > as.Date(end_date)) {
     stop("start_date must be before end_date")
   }
+  # Clean inputs
+  symbols <- trimws(toupper(symbols))
 
   # Run queries for each symbol
-  results <- purrr::map(symbols, function(s) {
-    # tryCatch(
-    #   {
-    temp <- tidyquant::tq_get(
-      x = s,
+  results <- purrr::map(symbols, function(ticker) {
+    dividend_data <- tidyquant::tq_get(
+      x = ticker,
       get = "dividends",
       from = start_date,
       to = end_date
     )
 
-    if (any(is.null(temp), is.na(temp), nrow(temp) == 0)) {
-      # warning("No data for ", s, " in ", start_date, " - ", end_date)
+    if (
+      any(
+        is.null(dividend_data),
+        is.na(dividend_data),
+        nrow(dividend_data) == 0
+      )
+    ) {
       return(list(
         data = NULL,
-        error = tibble(symbol = s, error_message = "No data returned")
+        error = tibble(symbol = ticker, error_message = "No data returned")
       ))
     }
 
-    list(data = temp, error = NULL)
-    #   },
-    #   error = function(e) {
-    #     list(data = NULL,
-    #          error = tibble(symbol = s, error_message = e$message))
-    #   }
-    # )
+    list(data = dividend_data, error = NULL)
   })
 
   # Combine results
@@ -410,10 +420,11 @@ load_yahoo_dividends <- function(
 
 # Helper Functions ##########
 
-#' Validate inputs ##########
+# Validate inputs ##########
+#' Validate inputs
 #'
 #' Check types, formats and ranges passed to other functions.
-#' @param symbol Character vector. Stock ticker(s).
+#' @param symbol Character vector. Stock ticker.
 #' @param interval Character. One of '1m','3m','5m','15m','30m',
 #'  '1h','2h','4h','6h','8h','12h','1d'.
 #' @param chunk_size Integer. Number of observations per query (max 1000).
@@ -468,7 +479,8 @@ validate_inputs <- function(
   }
 }
 
-#' map_interval ##########
+# map_interval ##########
+#' map_interval
 #'
 #' Check if string is valid interval and map to tidyquant format.
 #'
@@ -502,7 +514,7 @@ map_interval <- function(interval) {
 #' check_tiingo_symbols
 #'
 #' Check if symbols are supported by Tiingo.
-#' @param symbols Character vector. Stock ticker(s).
+#' @param symbols Character vector. Stock ticker.
 #' @return NULL. Stops with error if any unsupported.
 #' @noRd
 #' @import purrr riingo
@@ -517,7 +529,8 @@ check_tiingo_symbols <- function(symbols) {
   }
 }
 
-#' make_query_chunks ##########
+# make_query_chunks ##########
+#' make_query_chunks
 #'
 #' Split date range into chunks based on interval and chunk size.
 #' @param seq_interval Character. Interval in tidyquant format (e.g. "1 min").
@@ -544,7 +557,8 @@ make_query_chunks <- function(
   step <- dplyr::case_when(
     period == "min" ~ lubridate::minutes(chunk_size * number - 1),
     period == "hour" ~ lubridate::hours(chunk_size * number - 1),
-    period == "day" ~ lubridate::days(chunk_size * number - 1)
+    period == "day" ~ lubridate::days(chunk_size * number - 1),
+    period == "week" ~ lubridate::weeks(chunk_size * number - 1)
   ) # other periods return NA
 
   start_seq <- base::seq(
@@ -563,7 +577,8 @@ make_query_chunks <- function(
   )
 }
 
-#' adjust_for_splits ##########
+# adjust_for_splits ##########
+#' adjust_for_splits
 #'
 #' Adjust OHLCV prices for stock splits using splits data.
 #'
@@ -576,11 +591,11 @@ make_query_chunks <- function(
 #'   - open_time: timestamp (POSIXct or Date)
 #'   - open, high, low, close: price columns
 #'   - volume: volume column
-#' @param symbols Character vector of stock ticker(s) to adjust
+#' @param symbols Character vector of stock ticker to adjust
 #' @param splits_data Optional tibble with splits data. If NULL, fetches from tidyquant.
 #'   Must contain columns: symbol, date, value (split ratio)
 #' @return Tibble with split-adjusted OHLCV prices
-#' @export
+#' @noRd
 adjust_for_splits <- function(data, symbols, splits_data = NULL) {
   # Input validation
   if (nrow(data) == 0) {
@@ -603,33 +618,27 @@ adjust_for_splits <- function(data, symbols, splits_data = NULL) {
 
   # Get or use splits data
   if (is.null(splits_data)) {
-    # splits_data <- tryCatch({
-    #   result <- tidyquant::tq_get(symbols,
-    #                             get = "splits",
-    #                             from = "1900-01-01",
-    #                             to = Sys.Date())
-    #   # Handle the case where tq_get returns NA instead of throwing error
-    #   if (all(is.na(result)) || is.null(result)) {
-    #     NULL
-    #   } else {
-    #     result
-    #   }
-    # }, error = function(e) {
-    #   warning("Failed to fetch splits data: ", e$message)
-    #   NULL
-    # })
-
-    result <- tidyquant::tq_get(
+    # Fetch splits data using tidyquant
+    splits_data <- purrr::map_df(
       symbols,
-      get = "splits",
-      from = "1900-01-01",
-      to = Sys.Date()
+      ~ {
+        result <- tidyquant::tq_get(
+          .x,
+          get = "splits",
+          from = "1900-01-01",
+          to = Sys.Date()
+        )
+        if (nrow(result) == 0 || all(is.na(result)) || is.null(result)) {
+          message("No splits found for symbol: ", .x)
+          return(NULL)
+        } else {
+          return(result)
+        }
+      }
     )
-    # Handle the case where tq_get returns NA instead of throwing error
-    if (all(is.na(result)) || is.null(result)) {
-      result <- NULL
+    if (nrow(splits_data) == 0) {
+      splits_data <- NULL
     }
-    splits_data <- result
   }
 
   # If no splits, return original data
@@ -652,35 +661,42 @@ adjust_for_splits <- function(data, symbols, splits_data = NULL) {
   adjustment_factors <- calculate_adjustment_factors(splits_data)
 
   # Apply adjustments
-  # Apply adjustments
-  result <- data %>%
-    mutate(date = as.Date(open_time)) %>%
-    left_join(adjustment_factors, by = c("symbol", "date")) %>%
-    group_by(symbol) %>%
-    arrange(date) %>%
-    mutate(
-      # For each date, find the adjustment factor that applies
-      # This should be the factor from the next split date (or 1.0 if after all splits)
-      adj_factor = determine_adjustment_factor(
-        date,
-        adjustment_factors[adjustment_factors$symbol == first(symbol), ]
-      )
-    ) %>%
-    ungroup() %>%
-    mutate(
-      # Apply adjustments
-      open = open * adj_factor,
-      high = high * adj_factor,
-      low = low * adj_factor,
-      close = close * adj_factor,
-      volume = volume / adj_factor
-    ) %>%
-    select(-date, -adj_factor)
+  result <- tryCatch(
+    {
+      data %>%
+        mutate(date = as.Date(open_time)) %>%
+        left_join(adjustment_factors, by = c("symbol", "date")) %>%
+        group_by(symbol) %>%
+        arrange(date) %>%
+        mutate(
+          # For each date, find the adjustment factor that applies
+          # This should be the factor from the next split date (or 1.0 if after all splits)
+          adj_factor = determine_adjustment_factor(
+            date,
+            adjustment_factors[adjustment_factors$symbol == first(symbol), ]
+          )
+        ) %>%
+        ungroup() %>%
+        mutate(
+          # Apply adjustments
+          open = open * adj_factor,
+          high = high * adj_factor,
+          low = low * adj_factor,
+          close = close * adj_factor,
+          volume = volume / adj_factor
+        ) %>%
+        select(-date, -adj_factor)
+    },
+    error = function(e) {
+      stop("Error adjusting for splits: ", e$message)
+    }
+  )
 
   return(result)
 }
 
-#' determine_adjustment_factor ##########
+# determine_adjustment_factor ##########
+#' determine_adjustment_factor
 #'
 #' Determine the adjustment factor for a given date
 #'
@@ -707,7 +723,8 @@ determine_adjustment_factor <- function(target_dates, splits_for_symbol) {
   })
 }
 
-#' calculate_adjustment_factors ##########
+# calculate_adjustment_factors ##########
+#' calculate_adjustment_factors
 #'
 #' Calculate cumulative adjustment factors for splits
 #'
