@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(invest.funks)
+library(invest.data)
 
-test_check("invest.funks")
+test_check("invest.data")

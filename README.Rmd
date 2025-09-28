@@ -13,13 +13,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-# invest.funks
+# invest.data
 
 <!-- badges: start -->
 
 <!-- badges: end -->
 
-`invest.funks` is a lightweight R package that provides wrappers to fetch and prepare financial time series data from **Yahoo Finance, Tiingo, and Binance**.
+`invest.data` is a lightweight R package that provides wrappers to fetch and prepare financial time series data from **Yahoo Finance, Tiingo, and Binance**.
 
 It is designed to be used by other domestic projects, offering consistent data structures, error tracking, and preprocessing helpers (e.g. split adjustment).
 
@@ -53,21 +53,21 @@ Several R packages already provide access to financial data:
 
 - **`tidyquant::tq_get()`**  
   Flexible and general-purpose. Supports Yahoo, Tiingo, Alpha Vantage, and more.  
-  *Difference*: `invest.funks` builds on `tq_get()` but adds **query chunking**, **error logging**, and **consistent output structures** (`data` + `errors`).
+  *Difference*: `invest.data` builds on `tq_get()` but adds **query chunking**, **error logging**, and **consistent output structures** (`data` + `errors`).
 
 - **`quantmod::getSymbols()`**  
   One of the oldest tools for financial data in R. Primarily designed for **xts/zoo** workflows.  
-  *Difference*: `invest.funks` returns **tibbles**, integrates with the tidyverse, and provides **crypto support**.
+  *Difference*: `invest.data` returns **tibbles**, integrates with the tidyverse, and provides **crypto support**.
 
 - **`riingo`**  
   Official Tiingo client. Useful for low-level Tiingo queries.  
-  *Difference*: `invest.funks` abstracts over multiple providers (Yahoo, Tiingo, Binance) with the **same interface** and adds error handling.
+  *Difference*: `invest.data` abstracts over multiple providers (Yahoo, Tiingo, Binance) with the **same interface** and adds error handling.
 
 - **`BatchGetSymbols`**  
   Convenient batch retrieval of daily Yahoo Finance data.  
-  *Difference*: `invest.funks` is more general (intraday + crypto + dividends) and maintains the same return structure across all data types.
+  *Difference*: `invest.data` is more general (intraday + crypto + dividends) and maintains the same return structure across all data types.
 
-In short, `invest.funks` focuses less on being a full-featured API client, and more on being a **unified, resilient interface** for fetching stock, crypto, and dividend data with minimal friction.
+In short, `invest.data` focuses less on being a full-featured API client, and more on being a **unified, resilient interface** for fetching stock, crypto, and dividend data with minimal friction.
 
 
 ## Example
@@ -75,7 +75,7 @@ In short, `invest.funks` focuses less on being a full-featured API client, and m
 Load daily prices from Yahoo Finance:
 
 ```{r example-stock, eval = FALSE}
-library(invest.funks)
+library(invest.data)
 
 stock_test <- load_stock_timeseries(
   symbol     = c("AAPL", "MSFT", "INVALID"),  # includes an invalid symbol to demonstrate error logging
@@ -138,7 +138,7 @@ You can install the development version of **yourpackage** from GitHub:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("henrique-anatole/invest.funks")
+remotes::install_github("henrique-anatole/invest.data")
 ```
 
 ---

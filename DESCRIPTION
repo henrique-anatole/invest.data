@@ -1,4 +1,4 @@
-Package: invest.funks
+Package: invest.data
 Title: Fetch financial data from online sources
 Version: 1.0
 Authors@R: 
