@@ -333,7 +333,7 @@ scrap_b3_symbols <- function(
 ) {
   # Load internal classificacao_b3 dataset if no path provided
   if (is.null(class_file)) {
-    b3_class <- classificacao_b3
+    b3_class <- invest.data::classificacao_b3
   } else if (!file.exists(class_file)) {
     stop("Classification file not found at the provided path.")
   } else if (!grepl("\\.csv$", class_file)) {
