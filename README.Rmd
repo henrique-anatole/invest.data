@@ -364,5 +364,3 @@ benchmark_prices <- load_stock_timeseries(
 | `create_benchmarks()` | Curated list of common benchmarks |
 
 ---
-
-This section maintains the same structure and standards as your existing README, with clear examples, consistent formatting, and practical use cases that demonstrate how these functions integrate with the time series functions from the previous section.
