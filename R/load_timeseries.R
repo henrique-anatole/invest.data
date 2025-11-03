@@ -234,7 +234,7 @@ load_stock_timeseries <- function(
 
   if (tiingo) {
     # Check Tiingo API key
-    api <- set_tiingo_api_key()
+    api <- suppressMessages(tidyquant::tiingo_api_key(api))
     tidyquant::tiingo_api_key(api)
     # Ensure key is cleared after function exits
     on.exit(options(tiingo_key = NULL))
