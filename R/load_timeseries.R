@@ -234,8 +234,8 @@ load_stock_timeseries <- function(
 
   if (tiingo) {
     # Check Tiingo API key
-    api <- suppressMessages(tidyquant::tiingo_api_key(api))
-    tidyquant::tiingo_api_key(api)
+    api <- set_tiingo_api_key()
+    suppressMessages(tidyquant::tiingo_api_key(api))
     # Ensure key is cleared after function exits
     on.exit(options(tiingo_key = NULL))
 
@@ -274,28 +274,33 @@ load_stock_timeseries <- function(
     symbols
   )
 
-  # Run queries
-  results_list <- purrr::map(1:nrow(queries), function(i) {
-    tryCatch(
-      {
-        price_data <- tidyquant::tq_get(
-          x = queries$symbol[i],
-          get = source,
-          from = queries$start_date[i],
-          to = queries$end_date[i],
-          resample_frequency = gsub(" ", "", seq_interval)
-        )
-        if (is.null(price_data) || nrow(price_data) == 0) {
-          return(list(data = NULL, error = queries[i, ]))
+  # If queries is empty, return empty results
+  if (nrow(queries) == 0) {
+    results_list <- list()
+  } else {
+    # Run queries
+    results_list <- purrr::map(1:nrow(queries), function(i) {
+      tryCatch(
+        {
+          price_data <- tidyquant::tq_get(
+            x = coalesce(queries$symbol[i], "NotValid"),
+            get = source,
+            from = queries$start_date[i],
+            to = queries$end_date[i],
+            resample_frequency = gsub(" ", "", seq_interval)
+          )
+          if (is.null(price_data) || nrow(price_data) == 0) {
+            return(list(data = NULL, error = queries[i, ]))
+          }
+          list(data = price_data, error = NULL)
+        },
+        error = function(e) {
+          message("Error for ", queries$symbol[i], ": ", e$message)
+          list(data = NULL, error = queries[i, ])
         }
-        list(data = price_data, error = NULL)
-      },
-      error = function(e) {
-        message("Error for ", queries$symbol[i], ": ", e$message)
-        list(data = NULL, error = queries[i, ])
-      }
-    )
-  })
+      )
+    })
+  }
 
   # Combine results & errors
   all_data <- purrr::map_dfr(results_list, "data") %>%
