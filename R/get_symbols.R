@@ -55,7 +55,8 @@ scrap_sp500_symbols <- function() {
   wiki_url <- "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
   wiki_table <- wiki_url %>%
     read_html() %>%
-    html_node("table") %>%
+    # get the table node named "constituents"
+    html_node(xpath = '//*[@id="constituents"]') %>%
     html_table(fill = TRUE) %>%
     dplyr::mutate(Symbol = gsub("\\.", "-", Symbol))
 
