@@ -48,6 +48,7 @@ test_that("scrap_b3_symbols: returns tibble with expected columns", {
   suppressMessages(
     df <- scrap_b3_symbols()
   )
+  message(str(df))
   expect_s3_class(df, "tbl_df")
 
   expected_cols <- c(

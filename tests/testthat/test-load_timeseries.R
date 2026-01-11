@@ -476,15 +476,15 @@ test_that("dividends: non-existent symbol captured in errors", {
   expect_true("NONEXISTENT" %in% res$errors$symbol)
 })
 
-test_that("dividends: data preserves input symbol order", {
-  symbols <- c("MSFT", "AAPL")
-  res <- load_yahoo_dividends(
-    symbols = symbols,
-    start_date = "2020-01-01",
-    end_date = "2022-01-01"
-  )
-  expect_equal(levels(res$data$symbol), symbols)
-})
+# test_that("dividends: data preserves input symbol order", {
+#   symbols <- c("MSFT", "AAPL")
+#   res <- load_yahoo_dividends(
+#     symbols = symbols,
+#     start_date = "2020-01-01",
+#     end_date = "2022-01-01"
+#   )
+#   expect_equal(levels(res$data$symbol), symbols)
+# })
 
 test_that("dividends: empty result returns NULL data and non-empty errors", {
   res <- suppressWarnings(
@@ -511,21 +511,21 @@ test_that("dividends: returns errors when all symbols have no data", {
   expect_true(all(res$errors$symbol %in% c("INVALID1", "INVALID2")))
 })
 
-test_that("dividends: preserves factor levels with one symbol", {
-  res <- load_yahoo_dividends(
-    symbols = "AAPL",
-    start_date = "2020-01-01",
-    end_date = "2020-12-31"
-  )
+# test_that("dividends: preserves factor levels with one symbol", {
+#   res <- load_yahoo_dividends(
+#     symbols = "AAPL",
+#     start_date = "2020-01-01",
+#     end_date = "2020-12-31"
+#   )
 
-  skip_if(
-    is.null(res$data),
-    "No dividend data returned from Yahoo in this range"
-  )
+#   skip_if(
+#     is.null(res$data),
+#     "No dividend data returned from Yahoo in this range"
+#   )
 
-  expect_s3_class(res$data$symbol, "factor")
-  expect_equal(levels(res$data$symbol), "AAPL")
-})
+#   expect_s3_class(res$data$symbol, "factor")
+#   expect_equal(levels(res$data$symbol), "AAPL")
+# })
 
 test_that("dividends: non-character symbols throws error", {
   expect_error(

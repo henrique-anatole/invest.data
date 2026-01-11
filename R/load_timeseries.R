@@ -120,7 +120,7 @@ load_crypto_timeseries <- function(
     all_data <- all_data %>%
       tibble::as_tibble() %>%
       dplyr::mutate(
-        symbol = factor(symbol, levels = pair),
+        # symbol = factor(symbol, levels = pair),
         adjusted = close
       ) %>%
       dplyr::arrange(symbol, open_time) %>%
@@ -411,7 +411,7 @@ load_yahoo_dividends <- function(
   if (!is.null(all_data) && nrow(all_data) > 0) {
     all_data <- all_data %>%
       tibble::as_tibble() %>%
-      dplyr::mutate(symbol = factor(symbol, levels = symbols)) %>%
+      # dplyr::mutate(symbol = factor(symbol, levels = symbols)) %>%
       dplyr::arrange(symbol, date)
   }
 
