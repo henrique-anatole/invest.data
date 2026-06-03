@@ -183,10 +183,6 @@ scrap_asx_symbols <- function() {
   # URL of the ASX listed companies page. Can be overridden for testing.
   url <- "https://www.marketindex.com.au/asx-listed-companies"
 
-  # kill any existing selenium or geckodriver processes
-  system("pkill -f selenium", ignore.stdout = TRUE, ignore.stderr = TRUE)
-  system("pkill -f geckodriver", ignore.stdout = TRUE, ignore.stderr = TRUE)
-
   # start Selenium driver
   driver <- RSelenium::rsDriver(
     browser = "firefox",
@@ -294,8 +290,8 @@ scrap_asx_symbols <- function() {
     },
     finally = {
       # ensure browser closes
-      remDr$close()
-      driver$server$stop()
+      try(remDr$close(), silent = TRUE)
+      try(driver$server$stop(), silent = TRUE)
     }
   )
 }
@@ -358,10 +354,6 @@ scrap_b3_symbols <- function(
     }
   }
 
-  # Kill any existing selenium or geckodriver processes
-  system("pkill -f selenium", ignore.stdout = TRUE, ignore.stderr = TRUE)
-  system("pkill -f geckodriver", ignore.stdout = TRUE, ignore.stderr = TRUE)
-
   # Start RSelenium
   driver <- rsDriver(
     browser = "firefox",
@@ -377,25 +369,49 @@ scrap_b3_symbols <- function(
       remDr$navigate(url)
       Sys.sleep(10) # allow JS to load
 
-      # Click the download link
-      download_link <- remDr$findElement(using = "link text", "Download")
-      download_link$clickElement()
-
-      # find out the complete download path. If windows or linux
-      download_dir <- ifelse(
+      # resolve download directory (absolute or relative)
+      base_home <- ifelse(
         grepl("windows", tolower(Sys.info()[["sysname"]])),
-        file.path(Sys.getenv("USERPROFILE"), download_dir),
-        file.path(Sys.getenv("HOME"), download_dir)
+        Sys.getenv("USERPROFILE"),
+        Sys.getenv("HOME")
       )
 
-      # Wait dynamically for file download
-      wait_for_file <- function(pattern, dir = download_dir, timeout = 5) {
+      resolved_download_dir <- if (grepl("^(/|[A-Za-z]:)", download_dir)) {
+        download_dir
+      } else {
+        file.path(base_home, download_dir)
+      }
+
+      if (!dir.exists(resolved_download_dir)) {
+        stop("Download directory does not exist: ", resolved_download_dir)
+      }
+
+      # Wait dynamically for file download (new file only)
+      wait_for_file <- function(
+        pattern,
+        dir,
+        started_at,
+        timeout = 30
+      ) {
         start <- Sys.time()
         repeat {
-          files <- list.files(path = dir, pattern = pattern, full.names = TRUE)
-          if (length(files) >= 1) {
-            return(files[[1]])
+          files <- list.files(path = dir, full.names = TRUE)
+
+          if (length(files) > 0) {
+            file_info <- file.info(files)
+            candidates <- files[
+              grepl(pattern, basename(files)) &
+                !grepl("\\.(part|crdownload)$", basename(files)) &
+                !is.na(file_info$mtime) &
+                file_info$mtime >= started_at
+            ]
+
+            if (length(candidates) >= 1) {
+              latest_idx <- which.max(file.info(candidates)$mtime)
+              return(candidates[[latest_idx]])
+            }
           }
+
           if (
             as.numeric(difftime(Sys.time(), start, units = "secs")) > timeout
           ) {
@@ -405,7 +421,17 @@ scrap_b3_symbols <- function(
         }
       }
 
-      file_path <- wait_for_file(pattern = "IBOVDia", download_dir)
+      # Click the download link
+      download_link <- remDr$findElement(using = "link text", "Download")
+      download_started_at <- Sys.time()
+      download_link$clickElement()
+
+      file_path <- wait_for_file(
+        pattern = "^IBOVDia.*\\.csv$",
+        dir = resolved_download_dir,
+        started_at = download_started_at,
+        timeout = 30
+      )
 
       # Read downloaded CSV
       # suppress warnings about parsing failures
@@ -498,8 +524,8 @@ scrap_b3_symbols <- function(
     },
     finally = {
       # ensure browser closes
-      remDr$close()
-      driver$server$stop()
+      try(remDr$close(), silent = TRUE)
+      try(driver$server$stop(), silent = TRUE)
     }
   )
 

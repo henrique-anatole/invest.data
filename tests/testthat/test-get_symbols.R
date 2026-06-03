@@ -116,7 +116,7 @@ test_that("scrap_b3_symbols: works with a valid temporary classification file", 
     row.names = FALSE
   )
   suppressMessages(
-    df <- scrap_b3_symbols()
+    df <- scrap_b3_symbols(class_file = temp_valid_file)
   )
   expect_s3_class(df, "tbl_df")
 
@@ -152,7 +152,7 @@ test_that("scrap_b3_symbols: no file to download", {
   # Simulate a failure in reading the webpage by providing an invalid URL
 
   local_mocked_bindings(
-    difftime = function(...) 10,
+    difftime = function(...) 31,
     .package = "base"
   )
 

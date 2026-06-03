@@ -1,0 +1,118 @@
+---
+title: "Getting Started with invest.data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with invest.data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Overview
+
+`invest.data` provides wrappers for:
+
+- stock OHLCV (`load_stock_timeseries()`)
+- crypto OHLCV (`load_crypto_timeseries()`)
+- dividends (`load_yahoo_dividends()`)
+- symbol universes (`scrap_sp500_symbols()`, `scrap_asx_symbols()`, `scrap_b3_symbols()`)
+- fundamentals datasets (`get_fundamentals_data()`)
+
+Most retrieval functions return a list with:
+
+- `data`: successful results
+- `errors`: failed symbols/files and messages
+
+## Installation
+
+```{r}
+# install.packages("remotes")
+remotes::install_github("henrique-anatole/invest.data", dependencies = TRUE)
+library(invest.data)
+```
+
+## API credentials
+
+Use keyring-backed setup when possible:
+
+```{r}
+keyring::key_set("tiingo_key")
+keyring::key_set("binance_key")
+keyring::key_set("binance_secret")
+
+set_tiingo_api_key()
+set_binance_api_key()
+```
+
+## End-to-end workflow
+
+```{r}
+# 1) Fetch universe
+sp500 <- scrap_sp500_symbols()
+
+# 2) Select symbols
+symbols <- sp500 |> dplyr::slice_head(n = 5) |> dplyr::pull(symbol)
+
+# 3) Download prices
+prices <- load_stock_timeseries(
+  symbols = symbols,
+  interval = "1d",
+  start_date = "2024-01-01",
+  end_date = "2024-04-01"
+)
+
+# 4) Inspect successful and failed requests
+prices$data
+prices$errors
+
+# 5) Add benchmarks
+benchmarks <- create_benchmarks()
+benchmarks |> dplyr::slice_head(n = 5)
+```
+
+## RSelenium notes (ASX/B3)
+
+`scrap_asx_symbols()` and `scrap_b3_symbols()` require:
+
+- Firefox installed
+- Java available
+- `RSelenium` configured
+
+```{r}
+install.packages("RSelenium")
+
+# connectivity check only (optional)
+driver <- RSelenium::rsDriver(browser = "firefox", port = 4445L)
+remDr <- driver$client
+remDr$navigate("https://example.org")
+remDr$close()
+driver$server$stop()
+```
+
+For automated environments, pin browser/driver versions and run scraping in an isolated container or worker.
+
+## Known limitations
+
+- Data providers can enforce request limits and throttling.
+- Web-scraped sources can change HTML/download patterns without notice.
+- Intraday coverage depends on symbol/provider and may be incomplete.
+- Temporary source/network failures can produce partial outputs.
+
+## Reproducibility
+
+```{r}
+sessionInfo()
+```
+
+Recommended practices:
+
+- Use `renv` (or equivalent) to lock package versions.
+- For Selenium workflows, pin Firefox/geckodriver versions.
+- Cache extracted universes/fundamentals and refresh on a fixed schedule.
