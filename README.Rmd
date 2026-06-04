@@ -33,6 +33,38 @@ Most data-retrieval functions return a standardized object:
 - `data`: tibble/list with successful results
 - `errors`: tibble with failed symbols/files and error details (`NULL` when no errors)
 
+### How does it compare to other packages?
+
+Several R packages already provide access to financial data:
+
+- **`tidyquant::tq_get()`**  
+  Flexible and general-purpose. Supports Yahoo, Tiingo, Alpha Vantage,
+  and more.  
+  *Difference*: `invest.data` builds on `tq_get()` but adds **query
+  chunking**, **error logging**, and **consistent output structures**
+  (`data` + `errors`).
+
+- **`quantmod::getSymbols()`**  
+  One of the oldest tools for financial data in R. Primarily designed
+  for **xts/zoo** workflows.  
+  *Difference*: `invest.data` returns **tibbles**, integrates with the
+  tidyverse, and provides **crypto support**.
+
+- **`riingo`**  
+  Official Tiingo client. Useful for low-level Tiingo queries.  
+  *Difference*: `invest.data` abstracts over multiple providers (Yahoo,
+  Tiingo, Binance) with the **same interface** and adds error handling.
+
+- **`BatchGetSymbols`**  
+  Convenient batch retrieval of daily Yahoo Finance data.  
+  *Difference*: `invest.data` is more general (intraday + crypto +
+  dividends) and maintains the same return structure across all data
+  types.
+
+In short, `invest.data` focuses less on being a full-featured API
+client, and more on being a **unified, resilient interface** for
+fetching stock, crypto, and dividend data with minimal friction.
+
 ## Installation
 
 You can install the development version from GitHub:
